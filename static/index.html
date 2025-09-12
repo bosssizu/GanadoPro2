@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GanadoBravo IA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
+  <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
+  <form id="uploadForm" class="w-full max-w-md bg-white shadow-lg rounded-2xl p-5 space-y-3">
+    <label class="block text-sm font-semibold">Categoría</label>
+    <select name="category" required class="w-full border rounded-lg p-2">
+      <option value="vaca flaca">Vaca flaca</option>
+      <option value="levante">Levante</option>
+      <option value="engorde">Engorde</option>
+    </select>
+
+    <label class="flex items-center gap-2 mt-2"><input type="checkbox" id="proToggle" class="h-4 w-4"> <span class="text-sm font-semibold">Pro mode (LiDAR)</span></label>
+    <input type="hidden" name="pro" id="proHidden" value="">
+
+    <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">
+      <label class="block text-sm font-semibold">Archivo LiDAR (OBJ/PLY/GLB/USDZ)</label>
+      <input type="file" name="mesh_file" accept=".obj,.ply,.glb,.gltf,.usdz" class="block w-full text-sm border rounded-lg p-2 bg-white">
+      <label class="block text-sm font-semibold">Meta JSON (opcional)</label>
+      <textarea name="meta_json" rows="3" class="w-full border rounded-lg p-2 text-xs">{"units":"m","scale":1.0,"device":"iphone14pro"}</textarea>
+      <p class="text-[11px] text-gray-600">Consejo: captura 10–25s alrededor del animal, distancia 2–3m. iPhone/iPad con LiDAR recomendado.</p>
+    </div>
+
+    <label class="block text-sm font-semibold">Imagen del animal</label>
+    <input type="file" name="file" accept="image/*" required class="block w-full text-sm border rounded-lg p-2 bg-gray-50">
+
+    <button id="submitBtn" type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2">
+      <span id="btnText">Evaluar</span>
+      <span id="spinner" class="hidden animate-spin">⏳</span>
+    </button>
+
+    <p id="error" class="text-red-600 text-sm hidden"></p>
+  </form>
+
+  <pre id="out" class="mt-6 w-full max-w-3xl text-xs bg-white p-4 rounded-xl shadow overflow-auto"></pre>
+
+<script>
+const form = document.getElementById('uploadForm');
+const proToggle = document.getElementById('proToggle');
+const proFields = document.getElementById('proFields');
+const proHidden = document.getElementById('proHidden');
+proToggle.addEventListener('change', () => {
+  proFields.classList.toggle('hidden', !proToggle.checked);
+  proHidden.value = proToggle.checked ? '1' : '';
+});
+const btn = document.getElementById('submitBtn');
+const btnText = document.getElementById('btnText');
+const spinner = document.getElementById('spinner');
+const out = document.getElementById('out');
+const errorP = document.getElementById('error');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorP.classList.add('hidden');
+  out.textContent = '';
+  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
+
+  const fd = new FormData(form);
+  try {
+    const res = await fetch('/api/evaluate', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    errorP.textContent = err.message || String(err);
+    errorP.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+# main.py
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
+from openai import AsyncOpenAI
+import json, base64, os, asyncio, hashlib, math
+
+import prompts
+import lidar
+
+ALLOWED_DECISIONS = {"NO_COMPRAR","CONSIDERAR_BAJO","CONSIDERAR_ALTO","COMPRAR"}
+
+app = FastAPI(title="GanadoBravo IA v4.1")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+client = AsyncOpenAI()
+
+# In-memory caches
+RUBRIC_CACHE = {}
+HEALTH_BREED_CACHE = {}
+
+def _b64(data: bytes) -> str:
+    return base64.b64encode(data).decode("utf-8")
+
+def _norm_half_steps(x: float) -> float:
+    # clamp 0..10, snap to 0.5 increments
+    x = max(0.0, min(10.0, float(x)))
+    return round(x * 2.0) / 2.0
+
+def sha1(b: bytes) -> str:
+    return hashlib.sha1(b).hexdigest()
+
+CATEGORY_WEIGHTS = {
+    "levante": {
+        "Lomo": 0.14, "Aplomos (patas)": 0.14, "Línea dorsal": 0.12,
+        "Grupo / muscling posterior": 0.12, "Conformación general": 0.10,
+        "Angulación costillar": 0.08, "Ancho torácico": 0.08,
+        "Profundidad de pecho": 0.06, "Condición corporal (BCS)": 0.08,
+        "Inserción de cola": 0.08
+    },
+    "engorde": {
+        "Grupo / muscling posterior": 0.18, "Profundidad de pecho": 0.14,
+        "Ancho torácico": 0.12, "Conformación general": 0.10,
+        "Condición corporal (BCS)": 0.10, "Lomo": 0.10,
+        "Línea dorsal": 0.08, "Aplomos (patas)": 0.08,
+        "Angulación costillar": 0.06, "Inserción de cola": 0.04
+    },
+    "vaca flaca": {
+        "Lomo": 0.14, "Aplomos (patas)": 0.12, "Línea dorsal": 0.12,
+        "Profundidad de pecho": 0.10, "Ancho torácico": 0.10,
+        "Conformación general": 0.10, "Condición corporal (BCS)": 0.10,
+        "Grupo / muscling posterior": 0.10, "Angulación costillar": 0.08,
+        "Inserción de cola": 0.04
+    }
+}
+CATEGORY_OFFSETS = {"levante": 0.4, "vaca flaca": 0.8, "engorde": -0.3}
+
+def weighted_score(rubric: dict, category: str) -> float:
+    w = CATEGORY_WEIGHTS[category]
+    s = 0.0
+    for k, wt in w.items():
+        s += float(rubric.get(k, 0.0)) * wt
+    s = _norm_half_steps(s + CATEGORY_OFFSETS.get(category, 0.0))
+    return s
+
+def fallback_decision_from_score(gs: float):
+    # map score to decision + short text
+    if gs >= 8.5:
+        return "COMPRAR", "Excelente relación estructura/BCS para el objetivo."
+    if gs >= 7.5:
+        return "CONSIDERAR_ALTO", "Muy buen candidato; revisar precio y sanidad."
+    if gs >= 6.0:
+        return "CONSIDERAR_BAJO", "Aceptable, pero requiere manejo y precio competitivo."
+    return "NO_COMPRAR", "Debilidades relevantes para el objetivo actual."
+
+async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
+    content = [
+        {"type":"text","text":prompt},
+        {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
+    ]
+    # Prefer the Responses API
+    kwargs = {
+        "model": "gpt-4o-mini",
+        "input": [{"role":"user","content": content}],
+        "temperature": 0
+    }
+    if schema:
+        kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
+    else:
+        kwargs["response_format"] = {"type":"json_object"}
+
+    resp = await client.responses.create(**kwargs)
+    out = resp.output_text
+    try:
+        data = json.loads(out)
+    except Exception:
+        # Try stitched tool output if available
+        try:
+            data = json.loads(resp.output[0].content[0].text)
+        except Exception as e:
+            raise RuntimeError(f"JSON parse failed: {e}")
+    return data
+
+@app.get("/")
+async def root_index():
+    return FileResponse("static/index.html")
+
+@app.post("/api/evaluate")
+async def evaluate(category: str = Form(...), file: UploadFile = File(...), pro: str | None = Form(None), mesh_file: UploadFile | None = File(None), meta_json: str | None = Form(None)):
+    try:
+        category = category.strip().lower()
+        if category not in CATEGORY_WEIGHTS:
+            return JSONResponse({"error":"Categoría inválida"}, status_code=400)
+
+        img_bytes = await file.read()
+        if len(img_bytes) < 1024:
+            return JSONResponse({"error":"Imagen demasiado pequeña/corrupta"}, status_code=400)
+        b64 = _b64(img_bytes)
+        key = sha1(img_bytes)
+
+        # Pro mode switch (does NOT alter 2D flow unless 'pro' y mesh presentes)
+        lidar_metrics = None
+        if pro and mesh_file is not None:
+            try:
+                mesh_bytes = await mesh_file.read()
+                meta = json.loads(meta_json) if meta_json else {}
+                lidar_metrics = lidar.extract_lidar_metrics(mesh_bytes, mesh_file.filename, meta)
+            except Exception as ex:
+                lidar_metrics = {"error": str(ex)}
+
+                # 1) Rubric (cached by image)
+        rubric = RUBRIC_CACHE.get(key)
+        if not rubric:
+            r = await run_prompt(prompts.PROMPT_1, b64, prompts.RUBRIC_SCHEMA)
+            rubric = r.get("rubric", {})
+            # normalize
+            rubric = {k: _norm_half_steps(v) for k,v in rubric.items()}
+            RUBRIC_CACHE[key] = rubric
+
+        # 2) Health & Breed (cached by image)
+        hb = HEALTH_BREED_CACHE.get(key)
+        if not hb:
+            health_task = asyncio.create_task(run_prompt(prompts.PROMPT_4, b64, None))
+            breed_task = asyncio.create_task(run_prompt(prompts.PROMPT_5, b64, None))
+            res4, res5 = await asyncio.gather(health_task, breed_task)
+            hb = {"health": res4.get("health", {}), "breed": res5.get("breed", {})}
+            HEALTH_BREED_CACHE[key] = hb
+
+        # 3) Decision (LLM first, then fallback)
+        # Provide rubric to the model via text (not image)
+        prompt3 = prompts.PROMPT_3.replace("{category}", category) + "\nRubric JSON:\n" + json.dumps({"rubric": rubric}, ensure_ascii=False) + ( "\nLIDAR JSON:\n" + json.dumps(lidar_metrics, ensure_ascii=False) if lidar_metrics else "" )
+        res3 = await run_prompt(prompt3, b64, None)
+
+        global_score = float(res3.get("global_score", weighted_score(rubric, category)))
+        if lidar_metrics and not isinstance(lidar_metrics, dict) or (isinstance(lidar_metrics, dict) and "error" not in lidar_metrics):
+            try:
+                global_score = _norm_half_steps(global_score + adjust_from_lidar(category, lidar_metrics))
+            except Exception:
+                pass
+        global_score = _norm_half_steps(global_score)
+
+        decision_level = res3.get("decision_level")
+        decision_text = res3.get("decision_text", "")
+        rationale = res3.get("rationale", "")
+
+        if decision_level not in ALLOWED_DECISIONS:
+            # Fallback from weighted score
+            dl, txt = fallback_decision_from_score(global_score)
+            decision_level, decision_text = dl, txt
+            if not rationale:
+                rationale = "Ajustado automáticamente desde 'global_score' y pesos por categoría."
+
+        return {
+            "engine": "gpt-4o-mini",
+            "category": category,
+            "rubric": rubric,
+            "decision": {
+                "global_score": global_score,
+                "decision_level": decision_level,
+                "decision_text": decision_text,
+                "rationale": rationale
+            },
+            "health": hb["health"],
+            "breed": hb["breed"],
+            "mode": ("pro" if lidar_metrics else "standard"),
+            "lidar_metrics": lidar_metrics
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def adjust_from_lidar(category: str, m: dict) -> float:
+    """Devuelve un ajuste (delta) para global_score basado en métricas 3D."""
+    delta = 0.0
+    try:
+        girth = float(m.get("heart_girth_m", float('nan')))
+        length = float(m.get("body_length_m", float('nan')))
+        height = float(m.get("withers_height_m", float('nan')))
+        stance = float(m.get("stance_asymmetry_idx", float('nan')))
+        H_over_L = height/length if (height>0 and length>0) else float('nan')
+
+        if category == "engorde":
+            if (girth >= 1.90) and (length >= 1.70):
+                delta += 0.5
+        elif category == "levante":
+            if (H_over_L >= 0.70 and H_over_L <= 0.80) and (stance <= 0.15 or not math.isfinite(stance)):
+                delta += 0.4
+        elif category == "vaca flaca":
+            if (length >= 1.60) and (height >= 1.25) and (girth < 1.85 or not math.isfinite(girth)):
+                delta += 0.3
+    except Exception:
+        pass
+    # clamp and snap
+    delta = max(-1.0, min(1.0, delta))
+    return _norm_half_steps(delta)
