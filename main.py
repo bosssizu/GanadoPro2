@@ -1,9 +1,10 @@
-# main.py
+from __future__ import annotations
+
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from openai import AsyncOpenAI
-import json, base64, os, asyncio, hashlib, math
+import json, base64, os, asyncio, hashlib, math, typing
 
 import prompts
 import lidar
@@ -15,15 +16,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 client = AsyncOpenAI()
 
-# In-memory caches
-RUBRIC_CACHE = {}
-HEALTH_BREED_CACHE = {}
+# Caches en memoria
+RUBRIC_CACHE: dict[str, dict] = {}
+HEALTH_BREED_CACHE: dict[str, dict] = {}
 
 def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode("utf-8")
 
 def _norm_half_steps(x: float) -> float:
-    # clamp 0..10, snap to 0.5 increments
     x = max(0.0, min(10.0, float(x)))
     return round(x * 2.0) / 2.0
 
@@ -64,7 +64,6 @@ def weighted_score(rubric: dict, category: str) -> float:
     return s
 
 def fallback_decision_from_score(gs: float):
-    # map score to decision + short text
     if gs >= 8.5:
         return "COMPRAR", "Excelente relación estructura/BCS para el objetivo."
     if gs >= 7.5:
@@ -73,134 +72,8 @@ def fallback_decision_from_score(gs: float):
         return "CONSIDERAR_BAJO", "Aceptable, pero requiere manejo y precio competitivo."
     return "NO_COMPRAR", "Debilidades relevantes para el objetivo actual."
 
-async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
-    # Try Responses API first; if missing, fallback to Chat Completions (vision)
-    content = [
-        {"type":"text","text":prompt},
-        {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
-    ]
-    use_responses = hasattr(client, "responses") and callable(getattr(client, "responses").create if hasattr(client, "responses") else None)
-    try:
-        if use_responses:
-            kwargs = {
-                "model": "gpt-4o-mini",
-                "input": [{"role":"user","content": content}],
-                "temperature": 0
-            }
-            if schema:
-                kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
-            else:
-                kwargs["response_format"] = {"type":"json_object"}
-            resp = await client.responses.create(**kwargs)
-            out = resp.output_text
-            return json.loads(out)
-        else:
-            messages = [{"role":"user","content":[
-                {"type":"text","text":prompt},
-                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
-            ]}]
-            resp = await client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                temperature=0,
-                response_format={"type":"json_object"}
-            )
-            txt = resp.choices[0].message.content
-            return json.loads(txt)
-    except Exception as e:
-        raise RuntimeError(f"JSON parse failed: {e}")
-
-@app.get("/")
-("/")
-async def root_index():
-    return FileResponse("static/index.html")
-
-@app.post("/api/evaluate")
-async def evaluate(category: str = Form(...), file: UploadFile = File(...), pro: str | None = Form(None), mesh_file: UploadFile | None = File(None), meta_json: str | None = Form(None)):
-    try:
-        category = category.strip().lower()
-        if category not in CATEGORY_WEIGHTS:
-            return JSONResponse({"error":"Categoría inválida"}, status_code=400)
-
-        img_bytes = await file.read()
-        if len(img_bytes) < 1024:
-            return JSONResponse({"error":"Imagen demasiado pequeña/corrupta"}, status_code=400)
-        b64 = _b64(img_bytes)
-        key = sha1(img_bytes)
-
-        # Pro mode switch (does NOT alter 2D flow unless 'pro' y mesh presentes)
-        lidar_metrics = None
-        if pro and mesh_file is not None:
-            try:
-                mesh_bytes = await mesh_file.read()
-                meta = json.loads(meta_json) if meta_json else {}
-                lidar_metrics = lidar.extract_lidar_metrics(mesh_bytes, mesh_file.filename, meta)
-            except Exception as ex:
-                lidar_metrics = {"error": str(ex)}
-
-                # 1) Rubric (cached by image)
-        rubric = RUBRIC_CACHE.get(key)
-        if not rubric:
-            r = await run_prompt(prompts.PROMPT_1, b64, prompts.RUBRIC_SCHEMA)
-            rubric = r.get("rubric", {})
-            # normalize
-            rubric = {k: _norm_half_steps(v) for k,v in rubric.items()}
-            RUBRIC_CACHE[key] = rubric
-
-        # 2) Health & Breed (cached by image)
-        hb = HEALTH_BREED_CACHE.get(key)
-        if not hb:
-            health_task = asyncio.create_task(run_prompt(prompts.PROMPT_4, b64, None))
-            breed_task = asyncio.create_task(run_prompt(prompts.PROMPT_5, b64, None))
-            res4, res5 = await asyncio.gather(health_task, breed_task)
-            hb = {"health": res4.get("health", {}), "breed": res5.get("breed", {})}
-            HEALTH_BREED_CACHE[key] = hb
-
-        # 3) Decision (LLM first, then fallback)
-        # Provide rubric to the model via text (not image)
-        prompt3 = prompts.PROMPT_3.replace("{category}", category) + "\nRubric JSON:\n" + json.dumps({"rubric": rubric}, ensure_ascii=False) + ( "\nLIDAR JSON:\n" + json.dumps(lidar_metrics, ensure_ascii=False) if lidar_metrics else "" )
-        res3 = await run_prompt(prompt3, b64, None)
-
-        global_score = float(res3.get("global_score", weighted_score(rubric, category)))
-        if lidar_metrics and not isinstance(lidar_metrics, dict) or (isinstance(lidar_metrics, dict) and "error" not in lidar_metrics):
-            try:
-                global_score = _norm_half_steps(global_score + adjust_from_lidar(category, lidar_metrics))
-            except Exception:
-                pass
-        global_score = _norm_half_steps(global_score)
-
-        decision_level = res3.get("decision_level")
-        decision_text = res3.get("decision_text", "")
-        rationale = res3.get("rationale", "")
-
-        if decision_level not in ALLOWED_DECISIONS:
-            # Fallback from weighted score
-            dl, txt = fallback_decision_from_score(global_score)
-            decision_level, decision_text = dl, txt
-            if not rationale:
-                rationale = "Ajustado automáticamente desde 'global_score' y pesos por categoría."
-
-        return {
-            "engine": "gpt-4o-mini",
-            "category": category,
-            "rubric": rubric,
-            "decision": {
-                "global_score": global_score,
-                "decision_level": decision_level,
-                "decision_text": decision_text,
-                "rationale": rationale
-            },
-            "health": hb["health"],
-            "breed": hb["breed"],
-            "mode": ("pro" if lidar_metrics else "standard"),
-            "lidar_metrics": lidar_metrics
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-
 def adjust_from_lidar(category: str, m: dict) -> float:
-    """Devuelve un ajuste (delta) para global_score basado en métricas 3D."""
+    """Delta determinista por categoría en base a métricas 3D."""
     delta = 0.0
     try:
         girth = float(m.get("heart_girth_m", float('nan')))
@@ -213,13 +86,147 @@ def adjust_from_lidar(category: str, m: dict) -> float:
             if (girth >= 1.90) and (length >= 1.70):
                 delta += 0.5
         elif category == "levante":
-            if (H_over_L >= 0.70 and H_over_L <= 0.80) and (stance <= 0.15 or not math.isfinite(stance)):
+            if (H_over_L >= 0.70 and H_over_L <= 0.80) and (not math.isfinite(stance) or stance <= 0.15):
                 delta += 0.4
         elif category == "vaca flaca":
-            if (length >= 1.60) and (height >= 1.25) and (girth < 1.85 or not math.isfinite(girth)):
+            if (length >= 1.60) and (height >= 1.25) and (not math.isfinite(girth) or girth < 1.85):
                 delta += 0.3
     except Exception:
         pass
-    # clamp and snap
     delta = max(-1.0, min(1.0, delta))
     return _norm_half_steps(delta)
+
+async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
+    """Usa Responses API si existe; si no, fallback a Chat Completions con visión."""
+    content = [
+        {"type":"text","text":prompt},
+        {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
+    ]
+    # ¿Responses disponible?
+    use_responses = hasattr(client, "responses") and callable(getattr(client, "responses").create if hasattr(client, "responses") else None)
+    if use_responses:
+        kwargs = {
+            "model": "gpt-4o-mini",
+            "input": [{"role":"user","content": content}],
+            "temperature": 0
+        }
+        if schema:
+            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
+        else:
+            kwargs["response_format"] = {"type":"json_object"}
+        resp = await client.responses.create(**kwargs)
+        out = resp.output_text
+        return json.loads(out)
+    else:
+        # Fallback a Chat Completions (visión)
+        messages = [{
+            "role":"user",
+            "content":[
+                {"type":"text","text":prompt},
+                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
+            ]
+        }]
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0,
+            response_format={"type":"json_object"}
+        )
+        txt = resp.choices[0].message.content
+        return json.loads(txt)
+
+@app.get("/")
+async def root_index():
+    return FileResponse("static/index.html")
+
+@app.post("/api/evaluate")
+async def evaluate(
+    category: str = Form(...),
+    file: UploadFile = File(...),
+    pro: str | None = Form(None),
+    mesh_file: UploadFile | None = File(None),
+    meta_json: str | None = Form(None),
+):
+    try:
+        category = category.strip().lower()
+        if category not in CATEGORY_WEIGHTS:
+            return JSONResponse({"error":"Categoría inválida"}, status_code=400)
+
+        img_bytes = await file.read()
+        if len(img_bytes) < 1024:
+            return JSONResponse({"error":"Imagen demasiado pequeña/corrupta"}, status_code=400)
+        b64 = _b64(img_bytes)
+        key = sha1(img_bytes)
+
+        # Pro mode (no altera 2D si no se envía)
+        lidar_metrics = None
+        if pro and mesh_file is not None:
+            try:
+                mesh_bytes = await mesh_file.read()
+                meta = json.loads(meta_json) if meta_json else {}
+                lidar_metrics = lidar.extract_lidar_metrics(mesh_bytes, mesh_file.filename, meta)
+            except Exception as ex:
+                lidar_metrics = {"error": str(ex)}
+
+        # 1) Rubric (cache por imagen)
+        rubric = RUBRIC_CACHE.get(key)
+        if not rubric:
+            r = await run_prompt(prompts.PROMPT_1, b64, prompts.RUBRIC_SCHEMA)
+            rubric = r.get("rubric", {})
+            rubric = {k: _norm_half_steps(v) for k,v in rubric.items()}
+            RUBRIC_CACHE[key] = rubric
+
+        # 2) Salud y Raza (cache por imagen)
+        hb = HEALTH_BREED_CACHE.get(key)
+        if not hb:
+            health_task = asyncio.create_task(run_prompt(prompts.PROMPT_4, b64, None))
+            breed_task = asyncio.create_task(run_prompt(prompts.PROMPT_5, b64, None))
+            res4, res5 = await asyncio.gather(health_task, breed_task)
+            hb = {"health": res4.get("health", {}), "breed": res5.get("breed", {})}
+            HEALTH_BREED_CACHE[key] = hb
+
+        # 3) Decisión (LLM + fallback)
+        prompt3 = (
+            prompts.PROMPT_3.replace("{category}", category)
+            + "\nRubric JSON:\n" + json.dumps({"rubric": rubric}, ensure_ascii=False)
+            + ( "\nLIDAR JSON:\n" + json.dumps(lidar_metrics, ensure_ascii=False) if lidar_metrics else "" )
+        )
+        res3 = await run_prompt(prompt3, b64, None)
+
+        global_score = float(res3.get("global_score", weighted_score(rubric, category)))
+        global_score = _norm_half_steps(global_score)
+
+        # Ajuste determinista si hay LiDAR
+        if lidar_metrics and not isinstance(lidar_metrics, dict) or (isinstance(lidar_metrics, dict) and "error" not in lidar_metrics):
+            try:
+                global_score = _norm_half_steps(global_score + adjust_from_lidar(category, lidar_metrics))
+            except Exception:
+                pass
+
+        decision_level = res3.get("decision_level")
+        decision_text = res3.get("decision_text", "")
+        rationale = res3.get("rationale", "")
+
+        if decision_level not in ALLOWED_DECISIONS:
+            dl, txt = fallback_decision_from_score(global_score)
+            decision_level, decision_text = dl, txt
+            if not rationale:
+                rationale = "Ajustado automáticamente desde 'global_score' y pesos por categoría."
+
+        return {
+            "engine": "gpt-4o-mini",
+            "mode": ("pro" if lidar_metrics else "standard"),
+            "category": category,
+            "rubric": rubric,
+            "decision": {
+                "global_score": global_score,
+                "decision_level": decision_level,
+                "decision_text": decision_text,
+                "rationale": rationale
+            },
+            "health": hb["health"],
+            "breed": hb["breed"],
+            "lidar_metrics": lidar_metrics
+        }
+    except Exception as e:
+        return {"error": str(e)}
