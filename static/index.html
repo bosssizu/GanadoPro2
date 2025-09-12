@@ -4,7 +4,113 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GanadoBravo IA</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com">
+<script>
+function scoreColor(s){
+  if(s>=8.5) return 'bg-emerald-600';
+  if(s>=7.5) return 'bg-green-600';
+  if(s>=6.0) return 'bg-amber-600';
+  return 'bg-rose-600';
+}
+function badgeText(dec){
+  return {
+    "COMPRAR":["Comprar","bg-emerald-100 text-emerald-700"],
+    "CONSIDERAR_ALTO":["Considerar alto","bg-green-100 text-green-700"],
+    "CONSIDERAR_BAJO":["Considerar bajo","bg-amber-100 text-amber-800"],
+    "NO_COMPRAR":["No comprar","bg-rose-100 text-rose-700"]
+  }[dec] || [dec,'bg-gray-100 text-gray-700'];
+}
+function donutSVG(value){
+  const max=10, pct=(value/max)*100;
+  const c=44, r=40, len=2*Math.PI*r, off=len*(1-pct/100);
+  return \`
+  <svg viewBox="0 0 88 88" class="w-28 h-28">
+    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="currentColor" stroke-width="8"
+            stroke-dasharray="\${len}" stroke-dashoffset="\${off}" stroke-linecap="round"
+            transform="rotate(-90 44 44)"/>
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">\${value.toFixed(1)}</text>
+  </svg>\`;
+}
+function metricBar(name,val){
+  const pct = (val/10)*100;
+  return \`
+    <div>
+      <div class="flex justify-between text-xs mb-1"><span>\${name}</span><span>\${val}</span></div>
+      <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div class="h-2 \${scoreColor(val)}" style="width:\${pct}%"></div>
+      </div>
+    </div>\`;
+}
+function chip(text,classes){ return \`<span class="px-2 py-1 text-xs rounded-full \${classes}">\${text}</span>\`; }
+
+function renderViz(data,imgURL){
+  const v = document.getElementById('viz');
+  v.innerHTML = '';
+  const [label,cls] = badgeText(data.decision?.decision_level||''); 
+  const score = data.decision?.global_score||0;
+  const mode = data.mode==='pro' ? chip('Pro (LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
+  const head = document.createElement('div');
+  head.className = 'bg-white rounded-2xl shadow p-4 flex items-center gap-4';
+  head.innerHTML = \`
+    <img src="\${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/>
+    <div class="flex-1">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-sm uppercase tracking-wide text-gray-500">\${data.category}</span>
+        \${mode}
+        <span class="px-2 py-1 text-xs rounded \${cls}">\${label}</span>
+      </div>
+      <div class="text-sm text-gray-700">\${data.decision?.decision_text||''}</div>
+    </div>
+    <div class="text-gray-700" style="color:inherit;">\${donutSVG(score)}</div>
+  \`;
+  v.appendChild(head);
+
+  const met = document.createElement('div');
+  met.className = 'bg-white rounded-2xl shadow p-4';
+  met.innerHTML = '<div class="font-semibold mb-3">Métricas morfológicas</div>';
+  const grid = document.createElement('div');
+  grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+  Object.entries(data.rubric||{}).forEach(([k,val])=>{
+    grid.innerHTML += metricBar(k,Number(val)||0);
+  });
+  met.appendChild(grid);
+  v.appendChild(met);
+
+  const hb = document.createElement('div');
+  hb.className = 'bg-white rounded-2xl shadow p-4 grid sm:grid-cols-2 gap-4';
+  const flags = (data.health?.flags||[]);
+  hb.innerHTML = \`
+    <div>
+      <div class="font-semibold mb-2">Salud</div>
+      <div class="flex flex-wrap gap-2 mb-2">\${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div>
+      <div class="text-sm text-gray-700">\${data.health?.notes||''}</div>
+    </div>
+    <div>
+      <div class="font-semibold mb-2">Raza (estimada)</div>
+      <div class="flex items-center gap-2">
+        \${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}
+        <span class="text-xs text-gray-600">conf: \${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span>
+      </div>
+    </div>\`;
+  v.appendChild(hb);
+
+  if(data.lidar_metrics && !data.lidar_metrics.error){
+    const lm = document.createElement('div');
+    lm.className = 'bg-white rounded-2xl shadow p-4';
+    lm.innerHTML = '<div class="font-semibold mb-3">Métricas LiDAR</div>';
+    const tbl = document.createElement('div');
+    tbl.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
+    Object.entries(data.lidar_metrics).forEach(([k,val])=>{
+      if(typeof val === 'object') return;
+      tbl.innerHTML += \`<div class="flex justify-between"><span class="text-gray-600">\${k}</span><span class="font-medium">\${Number.isFinite(val)? val: '—'}</span></div>\`;
+    });
+    lm.appendChild(tbl);
+    v.appendChild(lm);
+  }
+}
+</script>
+        </script>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
   <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
@@ -38,7 +144,13 @@
     <p id="error" class="text-red-600 text-sm hidden"></p>
   </form>
 
-  <pre id="out" class="mt-6 w-full max-w-3xl text-xs bg-white p-4 rounded-xl shadow overflow-auto"></pre>
+  
+  <div id="viz" class="mt-6 w-full max-w-3xl grid gap-4"></div>
+  <details class="w-full max-w-3xl bg-white p-3 rounded-xl shadow">
+    <summary class="cursor-pointer font-semibold">Ver JSON</summary>
+    <pre id="out" class="text-xs overflow-auto"></pre>
+  </details>
+        
 
 <script>
 const form = document.getElementById('uploadForm');
@@ -56,6 +168,8 @@ const out = document.getElementById('out');
 const errorP = document.getElementById('error');
 
 form.addEventListener('submit', async (e) => {
+  const fileIn = form.querySelector('input[name="file"]');
+  const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
   e.preventDefault();
   errorP.classList.add('hidden');
   out.textContent = '';
@@ -67,6 +181,7 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
     out.textContent = JSON.stringify(data, null, 2);
+    if(imgPreviewURL) renderViz(data, imgPreviewURL);
   } catch (err) {
     errorP.textContent = err.message || String(err);
     errorP.classList.remove('hidden');
@@ -74,6 +189,112 @@ form.addEventListener('submit', async (e) => {
     btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
   }
 });
+
+<script>
+function scoreColor(s){
+  if(s>=8.5) return 'bg-emerald-600';
+  if(s>=7.5) return 'bg-green-600';
+  if(s>=6.0) return 'bg-amber-600';
+  return 'bg-rose-600';
+}
+function badgeText(dec){
+  return {
+    "COMPRAR":["Comprar","bg-emerald-100 text-emerald-700"],
+    "CONSIDERAR_ALTO":["Considerar alto","bg-green-100 text-green-700"],
+    "CONSIDERAR_BAJO":["Considerar bajo","bg-amber-100 text-amber-800"],
+    "NO_COMPRAR":["No comprar","bg-rose-100 text-rose-700"]
+  }[dec] || [dec,'bg-gray-100 text-gray-700'];
+}
+function donutSVG(value){
+  const max=10, pct=(value/max)*100;
+  const c=44, r=40, len=2*Math.PI*r, off=len*(1-pct/100);
+  return \`
+  <svg viewBox="0 0 88 88" class="w-28 h-28">
+    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="currentColor" stroke-width="8"
+            stroke-dasharray="\${len}" stroke-dashoffset="\${off}" stroke-linecap="round"
+            transform="rotate(-90 44 44)"/>
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">\${value.toFixed(1)}</text>
+  </svg>\`;
+}
+function metricBar(name,val){
+  const pct = (val/10)*100;
+  return \`
+    <div>
+      <div class="flex justify-between text-xs mb-1"><span>\${name}</span><span>\${val}</span></div>
+      <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div class="h-2 \${scoreColor(val)}" style="width:\${pct}%"></div>
+      </div>
+    </div>\`;
+}
+function chip(text,classes){ return \`<span class="px-2 py-1 text-xs rounded-full \${classes}">\${text}</span>\`; }
+
+function renderViz(data,imgURL){
+  const v = document.getElementById('viz');
+  v.innerHTML = '';
+  const [label,cls] = badgeText(data.decision?.decision_level||''); 
+  const score = data.decision?.global_score||0;
+  const mode = data.mode==='pro' ? chip('Pro (LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
+  const head = document.createElement('div');
+  head.className = 'bg-white rounded-2xl shadow p-4 flex items-center gap-4';
+  head.innerHTML = \`
+    <img src="\${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/>
+    <div class="flex-1">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-sm uppercase tracking-wide text-gray-500">\${data.category}</span>
+        \${mode}
+        <span class="px-2 py-1 text-xs rounded \${cls}">\${label}</span>
+      </div>
+      <div class="text-sm text-gray-700">\${data.decision?.decision_text||''}</div>
+    </div>
+    <div class="text-gray-700" style="color:inherit;">\${donutSVG(score)}</div>
+  \`;
+  v.appendChild(head);
+
+  const met = document.createElement('div');
+  met.className = 'bg-white rounded-2xl shadow p-4';
+  met.innerHTML = '<div class="font-semibold mb-3">Métricas morfológicas</div>';
+  const grid = document.createElement('div');
+  grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+  Object.entries(data.rubric||{}).forEach(([k,val])=>{
+    grid.innerHTML += metricBar(k,Number(val)||0);
+  });
+  met.appendChild(grid);
+  v.appendChild(met);
+
+  const hb = document.createElement('div');
+  hb.className = 'bg-white rounded-2xl shadow p-4 grid sm:grid-cols-2 gap-4';
+  const flags = (data.health?.flags||[]);
+  hb.innerHTML = \`
+    <div>
+      <div class="font-semibold mb-2">Salud</div>
+      <div class="flex flex-wrap gap-2 mb-2">\${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div>
+      <div class="text-sm text-gray-700">\${data.health?.notes||''}</div>
+    </div>
+    <div>
+      <div class="font-semibold mb-2">Raza (estimada)</div>
+      <div class="flex items-center gap-2">
+        \${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}
+        <span class="text-xs text-gray-600">conf: \${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span>
+      </div>
+    </div>\`;
+  v.appendChild(hb);
+
+  if(data.lidar_metrics && !data.lidar_metrics.error){
+    const lm = document.createElement('div');
+    lm.className = 'bg-white rounded-2xl shadow p-4';
+    lm.innerHTML = '<div class="font-semibold mb-3">Métricas LiDAR</div>';
+    const tbl = document.createElement('div');
+    tbl.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
+    Object.entries(data.lidar_metrics).forEach(([k,val])=>{
+      if(typeof val === 'object') return;
+      tbl.innerHTML += \`<div class="flex justify-between"><span class="text-gray-600">\${k}</span><span class="font-medium">\${Number.isFinite(val)? val: '—'}</span></div>\`;
+    });
+    lm.appendChild(tbl);
+    v.appendChild(lm);
+  }
+}
 </script>
+        </script>
 </body>
 </html>
