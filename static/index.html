@@ -1,120 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GanadoBravo IA</title>
-  <script src="https://cdn.tailwindcss.com">
-<script>
-function scoreColor(s){
-  if(s>=8.5) return 'bg-emerald-600';
-  if(s>=7.5) return 'bg-green-600';
-  if(s>=6.0) return 'bg-amber-600';
-  return 'bg-rose-600';
-}
-function badgeText(dec){
-  return {
-    "COMPRAR":["Comprar","bg-emerald-100 text-emerald-700"],
-    "CONSIDERAR_ALTO":["Considerar alto","bg-green-100 text-green-700"],
-    "CONSIDERAR_BAJO":["Considerar bajo","bg-amber-100 text-amber-800"],
-    "NO_COMPRAR":["No comprar","bg-rose-100 text-rose-700"]
-  }[dec] || [dec,'bg-gray-100 text-gray-700'];
-}
-function donutSVG(value){
-  const max=10, pct=(value/max)*100;
-  const c=44, r=40, len=2*Math.PI*r, off=len*(1-pct/100);
-  return \`
-  <svg viewBox="0 0 88 88" class="w-28 h-28">
-    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="currentColor" stroke-width="8"
-            stroke-dasharray="\${len}" stroke-dashoffset="\${off}" stroke-linecap="round"
-            transform="rotate(-90 44 44)"/>
-    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">\${value.toFixed(1)}</text>
-  </svg>\`;
-}
-function metricBar(name,val){
-  const pct = (val/10)*100;
-  return \`
-    <div>
-      <div class="flex justify-between text-xs mb-1"><span>\${name}</span><span>\${val}</span></div>
-      <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div class="h-2 \${scoreColor(val)}" style="width:\${pct}%"></div>
-      </div>
-    </div>\`;
-}
-function chip(text,classes){ return \`<span class="px-2 py-1 text-xs rounded-full \${classes}">\${text}</span>\`; }
-
-function renderViz(data,imgURL){
-  const v = document.getElementById('viz');
-  v.innerHTML = '';
-  const [label,cls] = badgeText(data.decision?.decision_level||''); 
-  const score = data.decision?.global_score||0;
-  const mode = data.mode==='pro' ? chip('Pro (LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
-  const head = document.createElement('div');
-  head.className = 'bg-white rounded-2xl shadow p-4 flex items-center gap-4';
-  head.innerHTML = \`
-    <img src="\${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/>
-    <div class="flex-1">
-      <div class="flex items-center gap-2 mb-1">
-        <span class="text-sm uppercase tracking-wide text-gray-500">\${data.category}</span>
-        \${mode}
-        <span class="px-2 py-1 text-xs rounded \${cls}">\${label}</span>
-      </div>
-      <div class="text-sm text-gray-700">\${data.decision?.decision_text||''}</div>
-    </div>
-    <div class="text-gray-700" style="color:inherit;">\${donutSVG(score)}</div>
-  \`;
-  v.appendChild(head);
-
-  const met = document.createElement('div');
-  met.className = 'bg-white rounded-2xl shadow p-4';
-  met.innerHTML = '<div class="font-semibold mb-3">Métricas morfológicas</div>';
-  const grid = document.createElement('div');
-  grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
-  Object.entries(data.rubric||{}).forEach(([k,val])=>{
-    grid.innerHTML += metricBar(k,Number(val)||0);
-  });
-  met.appendChild(grid);
-  v.appendChild(met);
-
-  const hb = document.createElement('div');
-  hb.className = 'bg-white rounded-2xl shadow p-4 grid sm:grid-cols-2 gap-4';
-  const flags = (data.health?.flags||[]);
-  hb.innerHTML = \`
-    <div>
-      <div class="font-semibold mb-2">Salud</div>
-      <div class="flex flex-wrap gap-2 mb-2">\${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div>
-      <div class="text-sm text-gray-700">\${data.health?.notes||''}</div>
-    </div>
-    <div>
-      <div class="font-semibold mb-2">Raza (estimada)</div>
-      <div class="flex items-center gap-2">
-        \${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}
-        <span class="text-xs text-gray-600">conf: \${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span>
-      </div>
-    </div>\`;
-  v.appendChild(hb);
-
-  if(data.lidar_metrics && !data.lidar_metrics.error){
-    const lm = document.createElement('div');
-    lm.className = 'bg-white rounded-2xl shadow p-4';
-    lm.innerHTML = '<div class="font-semibold mb-3">Métricas LiDAR</div>';
-    const tbl = document.createElement('div');
-    tbl.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
-    Object.entries(data.lidar_metrics).forEach(([k,val])=>{
-      if(typeof val === 'object') return;
-      tbl.innerHTML += \`<div class="flex justify-between"><span class="text-gray-600">\${k}</span><span class="font-medium">\${Number.isFinite(val)? val: '—'}</span></div>\`;
-    });
-    lm.appendChild(tbl);
-    v.appendChild(lm);
-  }
-}
-</script>
-        </script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
   <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
-  <form id="uploadForm" class="w-full max-w-md bg-white shadow-lg rounded-2xl p-5 space-y-3">
+
+  <form id="uploadForm" class="w-full max-w-md bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data">
     <label class="block text-sm font-semibold">Categoría</label>
     <select name="category" required class="w-full border rounded-lg p-2">
       <option value="vaca flaca">Vaca flaca</option>
@@ -122,19 +17,21 @@ function renderViz(data,imgURL){
       <option value="engorde">Engorde</option>
     </select>
 
-    <label class="flex items-center gap-2 mt-2"><input type="checkbox" id="proToggle" class="h-4 w-4"> <span class="text-sm font-semibold">Pro mode (LiDAR) — Escanear</span></label>
+    <label class="block text-sm font-semibold">Imagen del animal</label>
+    <input type="file" name="file" accept="image/*" required class="block w-full text-sm border rounded-lg p-2 bg-gray-50">
+
+    <label class="flex items-center gap-2 mt-2">
+      <input type="checkbox" id="proToggle" class="h-4 w-4">
+      <span class="text-sm font-semibold">Pro mode (LiDAR) — Escanear</span>
+    </label>
     <input type="hidden" name="pro" id="proHidden" value="">
 
     <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">
       <label class="block text-sm font-semibold">Escanear (por ahora, sube el archivo OBJ/PLY/GLB/USDZ)</label>
-      <input type="file" name="mesh_file" accept=".obj,.ply,.glb,.gltf,.usdz" class="block w-full text-sm border rounded-lg p-2 bg-white">
-      <label class="block text-sm font-semibold">Meta JSON (opcional)</label>
-      <textarea name="meta_json" rows="3" class="w-full border rounded-lg p-2 text-xs">{"units":"m","scale":1.0,"device":"iphone14pro"}</textarea>
-      <p class="text-[11px] text-gray-600">Consejo: captura 10–25s alrededor del animal, distancia 2–3m. iPhone/iPad con LiDAR recomendado.</p>
+      <input type="file" name="mesh_file" accept=".obj,.ply,.glb,.gltf,.usd,.usdz" class="block w-full text-sm border rounded-lg p-2 bg-white">
+      <label class="block text-xs text-gray-600">Meta JSON (opcional)</label>
+      <textarea name="meta_json" rows="3" class="w-full text-xs border rounded-lg p-2" placeholder='{"units":"m","scale":1.0}'></textarea>
     </div>
-
-    <label class="block text-sm font-semibold">Imagen del animal</label>
-    <input type="file" name="file" accept="image/*" required class="block w-full text-sm border rounded-lg p-2 bg-gray-50">
 
     <button id="submitBtn" type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2">
       <span id="btnText">Evaluar</span>
@@ -144,53 +41,28 @@ function renderViz(data,imgURL){
     <p id="error" class="text-red-600 text-sm hidden"></p>
   </form>
 
-  
   <div id="viz" class="mt-6 w-full max-w-3xl grid gap-4"></div>
-  <details class="w-full max-w-3xl bg-white p-3 rounded-xl shadow">
+  <details class="w-full max-w-3xl bg-white p-3 rounded-xl shadow mt-4">
     <summary class="cursor-pointer font-semibold">Ver JSON</summary>
     <pre id="out" class="text-xs overflow-auto"></pre>
   </details>
-        
 
 <script>
 const form = document.getElementById('uploadForm');
-const proToggle = document.getElementById('proToggle');
-const proFields = document.getElementById('proFields');
-const proHidden = document.getElementById('proHidden');
-proToggle.addEventListener('change', () => {
-  proFields.classList.toggle('hidden', !proToggle.checked);
-  proHidden.value = proToggle.checked ? '1' : '';
-});
 const btn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
 const spinner = document.getElementById('spinner');
 const out = document.getElementById('out');
 const errorP = document.getElementById('error');
+const proToggle = document.getElementById('proToggle');
+const proFields = document.getElementById('proFields');
+const proHidden = document.getElementById('proHidden');
 
-form.addEventListener('submit', async (e) => {
-  const fileIn = form.querySelector('input[name="file"]');
-  const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
-  e.preventDefault();
-  errorP.classList.add('hidden');
-  out.textContent = '';
-  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
-
-  const fd = new FormData(form);
-  try {
-    const res = await fetch('/api/evaluate', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
-    out.textContent = JSON.stringify(data, null, 2);
-    if(imgPreviewURL) renderViz(data, imgPreviewURL);
-  } catch (err) {
-    errorP.textContent = err.message || String(err);
-    errorP.classList.remove('hidden');
-  } finally {
-    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
-  }
+proToggle.addEventListener('change', () => {
+  proFields.classList.toggle('hidden', !proToggle.checked);
+  proHidden.value = proToggle.checked ? '1' : '';
 });
 
-<script>
 function scoreColor(s){
   if(s>=8.5) return 'bg-emerald-600';
   if(s>=7.5) return 'bg-green-600';
@@ -207,48 +79,49 @@ function badgeText(dec){
 }
 function donutSVG(value){
   const max=10, pct=(value/max)*100;
-  const c=44, r=40, len=2*Math.PI*r, off=len*(1-pct/100);
-  return \`
+  const r=40, len=2*Math.PI*r, off=len*(1-pct/100);
+  return `
   <svg viewBox="0 0 88 88" class="w-28 h-28">
-    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-    <circle cx="44" cy="44" r="\${r}" fill="none" stroke="currentColor" stroke-width="8"
-            stroke-dasharray="\${len}" stroke-dashoffset="\${off}" stroke-linecap="round"
+    <circle cx="44" cy="44" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+    <circle cx="44" cy="44" r="${r}" fill="none" stroke="currentColor" stroke-width="8"
+            stroke-dasharray="${len}" stroke-dashoffset="${off}" stroke-linecap="round"
             transform="rotate(-90 44 44)"/>
-    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">\${value.toFixed(1)}</text>
-  </svg>\`;
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">${Number(value).toFixed(1)}</text>
+  </svg>`;
 }
 function metricBar(name,val){
   const pct = (val/10)*100;
-  return \`
+  return `
     <div>
-      <div class="flex justify-between text-xs mb-1"><span>\${name}</span><span>\${val}</span></div>
+      <div class="flex justify-between text-xs mb-1"><span>${name}</span><span>${val}</span></div>
       <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div class="h-2 \${scoreColor(val)}" style="width:\${pct}%"></div>
+        <div class="h-2 ${scoreColor(val)}" style="width:${pct}%"></div>
       </div>
-    </div>\`;
+    </div>`;
 }
-function chip(text,classes){ return \`<span class="px-2 py-1 text-xs rounded-full \${classes}">\${text}</span>\`; }
+function chip(text,classes){ return `<span class="px-2 py-1 text-xs rounded-full ${classes}">${text}</span>`; }
 
 function renderViz(data,imgURL){
   const v = document.getElementById('viz');
   v.innerHTML = '';
+
   const [label,cls] = badgeText(data.decision?.decision_level||''); 
   const score = data.decision?.global_score||0;
   const mode = data.mode==='pro' ? chip('Pro (LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
   const head = document.createElement('div');
   head.className = 'bg-white rounded-2xl shadow p-4 flex items-center gap-4';
-  head.innerHTML = \`
-    <img src="\${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/>
+  head.innerHTML = `
+    <img src="${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/>
     <div class="flex-1">
       <div class="flex items-center gap-2 mb-1">
-        <span class="text-sm uppercase tracking-wide text-gray-500">\${data.category}</span>
-        \${mode}
-        <span class="px-2 py-1 text-xs rounded \${cls}">\${label}</span>
+        <span class="text-sm uppercase tracking-wide text-gray-500">${data.category}</span>
+        ${mode}
+        <span class="px-2 py-1 text-xs rounded ${cls}">${label}</span>
       </div>
-      <div class="text-sm text-gray-700">\${data.decision?.decision_text||''}</div>
+      <div class="text-sm text-gray-700">${data.decision?.decision_text||''}</div>
     </div>
-    <div class="text-gray-700" style="color:inherit;">\${donutSVG(score)}</div>
-  \`;
+    <div class="text-gray-700" style="color:inherit;">${donutSVG(score)}</div>
+  `;
   v.appendChild(head);
 
   const met = document.createElement('div');
@@ -265,19 +138,19 @@ function renderViz(data,imgURL){
   const hb = document.createElement('div');
   hb.className = 'bg-white rounded-2xl shadow p-4 grid sm:grid-cols-2 gap-4';
   const flags = (data.health?.flags||[]);
-  hb.innerHTML = \`
+  hb.innerHTML = `
     <div>
       <div class="font-semibold mb-2">Salud</div>
-      <div class="flex flex-wrap gap-2 mb-2">\${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div>
-      <div class="text-sm text-gray-700">\${data.health?.notes||''}</div>
+      <div class="flex flex-wrap gap-2 mb-2">${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div>
+      <div class="text-sm text-gray-700">${data.health?.notes||''}</div>
     </div>
     <div>
       <div class="font-semibold mb-2">Raza (estimada)</div>
       <div class="flex items-center gap-2">
-        \${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}
-        <span class="text-xs text-gray-600">conf: \${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span>
+        ${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}
+        <span class="text-xs text-gray-600">conf: ${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span>
       </div>
-    </div>\`;
+    </div>`;
   v.appendChild(hb);
 
   if(data.lidar_metrics && !data.lidar_metrics.error){
@@ -288,13 +161,39 @@ function renderViz(data,imgURL){
     tbl.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
     Object.entries(data.lidar_metrics).forEach(([k,val])=>{
       if(typeof val === 'object') return;
-      tbl.innerHTML += \`<div class="flex justify-between"><span class="text-gray-600">\${k}</span><span class="font-medium">\${Number.isFinite(val)? val: '—'}</span></div>\`;
+      tbl.innerHTML += `<div class="flex justify-between"><span class="text-gray-600">${k}</span><span class="font-medium">${Number.isFinite(val)? val: '—'}</span></div>`;
     });
     lm.appendChild(tbl);
     v.appendChild(lm);
   }
 }
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorP.classList.add('hidden');
+  out.textContent = '';
+  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
+
+  const fd = new FormData(form);
+  const fileIn = form.querySelector('input[name="file"]');
+  const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
+
+  try {
+    const res = await fetch('/api/evaluate', { method: 'POST', body: fd });
+    const txt = await res.text();
+    let data;
+    try { data = JSON.parse(txt); } catch { throw new Error(txt || 'Respuesta no-JSON'); }
+    if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
+    out.textContent = JSON.stringify(data, null, 2);
+    if(imgPreviewURL) renderViz(data, imgPreviewURL);
+  } catch (err) {
+    console.error(err);
+    errorP.textContent = (err && err.message) ? err.message : String(err);
+    errorP.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
+  }
+});
 </script>
-        </script>
 </body>
 </html>
