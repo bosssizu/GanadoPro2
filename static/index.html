@@ -16,11 +16,11 @@
       <option value="engorde">Engorde</option>
     </select>
 
-    <label class="flex items-center gap-2 mt-2"><input type="checkbox" id="proToggle" class="h-4 w-4"> <span class="text-sm font-semibold">Pro mode (LiDAR)</span></label>
+    <label class="flex items-center gap-2 mt-2"><input type="checkbox" id="proToggle" class="h-4 w-4"> <span class="text-sm font-semibold">Pro mode (LiDAR) — Escanear</span></label>
     <input type="hidden" name="pro" id="proHidden" value="">
 
     <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">
-      <label class="block text-sm font-semibold">Archivo LiDAR (OBJ/PLY/GLB/USDZ)</label>
+      <label class="block text-sm font-semibold">Escanear (por ahora, sube el archivo OBJ/PLY/GLB/USDZ)</label>
       <input type="file" name="mesh_file" accept=".obj,.ply,.glb,.gltf,.usdz" class="block w-full text-sm border rounded-lg p-2 bg-white">
       <label class="block text-sm font-semibold">Meta JSON (opcional)</label>
       <textarea name="meta_json" rows="3" class="w-full border rounded-lg p-2 text-xs">{"units":"m","scale":1.0,"device":"iphone14pro"}</textarea>

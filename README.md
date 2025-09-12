@@ -39,3 +39,5 @@ POST `/api/evaluate`
 - Formatos soportados: OBJ, PLY, GLB/GLTF, USDZ (preferidos OBJ/PLY).
 - Requiere dependencias: open3d, trimesh, numpy, scipy.
 - El servidor extrae métricas 3D deterministas (largo, alto, girth, volumen, etc.) y ajusta la decisión sin romper el flujo actual.
+
+> **Nota sobre “Escanear”**: los navegadores no exponen el sensor LiDAR. Para escanear en 3D necesitas una **app nativa iOS (ARKit)** o Android que genere un **OBJ/PLY/GLB/USDZ**. La web UI muestra “Escanear”, pero por ahora significa **subir el archivo del escaneo**.

@@ -74,34 +74,44 @@ def fallback_decision_from_score(gs: float):
     return "NO_COMPRAR", "Debilidades relevantes para el objetivo actual."
 
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
+    # Try Responses API first; if missing, fallback to Chat Completions (vision)
     content = [
         {"type":"text","text":prompt},
         {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
     ]
-    # Prefer the Responses API
-    kwargs = {
-        "model": "gpt-4o-mini",
-        "input": [{"role":"user","content": content}],
-        "temperature": 0
-    }
-    if schema:
-        kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
-    else:
-        kwargs["response_format"] = {"type":"json_object"}
-
-    resp = await client.responses.create(**kwargs)
-    out = resp.output_text
+    use_responses = hasattr(client, "responses") and callable(getattr(client, "responses").create if hasattr(client, "responses") else None)
     try:
-        data = json.loads(out)
-    except Exception:
-        # Try stitched tool output if available
-        try:
-            data = json.loads(resp.output[0].content[0].text)
-        except Exception as e:
-            raise RuntimeError(f"JSON parse failed: {e}")
-    return data
+        if use_responses:
+            kwargs = {
+                "model": "gpt-4o-mini",
+                "input": [{"role":"user","content": content}],
+                "temperature": 0
+            }
+            if schema:
+                kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
+            else:
+                kwargs["response_format"] = {"type":"json_object"}
+            resp = await client.responses.create(**kwargs)
+            out = resp.output_text
+            return json.loads(out)
+        else:
+            messages = [{"role":"user","content":[
+                {"type":"text","text":prompt},
+                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
+            ]}]
+            resp = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0,
+                response_format={"type":"json_object"}
+            )
+            txt = resp.choices[0].message.content
+            return json.loads(txt)
+    except Exception as e:
+        raise RuntimeError(f"JSON parse failed: {e}")
 
 @app.get("/")
+("/")
 async def root_index():
     return FileResponse("static/index.html")
 
