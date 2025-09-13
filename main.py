@@ -1,4 +1,4 @@
-import os, base64, json, unicodedata, statistics
+import os, base64, json, unicodedata, statistics, re
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, UploadFile
@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from openai import AsyncOpenAI
 from prompts import (
-    EVALUATION_PROMPT_ES, EVALUATION_SCHEMA,
+    JSON_GUARD, EVALUATION_PROMPT_ES, EVALUATION_SCHEMA,
     RUBRIC_ONLY_PROMPT_ES, HEALTH_ONLY_PROMPT_ES, BREED_ONLY_PROMPT_ES
 )
 
@@ -18,7 +18,7 @@ MODEL = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL) if OPENAI_BASE_URL else AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-app = FastAPI(title="GanadoBravo IA v4.3.1")
+app = FastAPI(title="GanadoBravo IA v4.3.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -67,33 +67,72 @@ def canonicalize_rubric(rub: dict | None) -> dict:
         except: out[key] = 0.0
     return out
 
+def extract_json_relaxed(text: str) -> dict:
+    # Remove markdown fences and grab the largest {...} block
+    if not text: return {}
+    t = text.strip().replace('```json', '```').strip('`')
+    m = re.search(r'\{.*\}', t, re.S)
+    if not m: 
+        # try arrays
+        m = re.search(r'\[.*\]', t, re.S)
+    if not m: return {}
+    frag = m.group(0)
+    try:
+        return json.loads(frag)
+    except Exception:
+        # last resort: fix common trailing commas
+        frag = re.sub(r',\s*([}\]])', r'\1', frag)
+        return json.loads(frag)
+
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
+    # Prefer Responses API when available
     content = [
+        {"type": "text", "text": JSON_GUARD},
         {"type": "text", "text": prompt},
         {"type": "input_image", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
     ]
     use_responses = hasattr(client, "responses") and callable(getattr(getattr(client, "responses"), "create", None))
     if use_responses:
         kwargs = {"model": MODEL, "input": [{"role": "user", "content": content}], "temperature": 0}
-        kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"gb_schema","schema":(schema or {"type":"object"}),"strict":True}}
-        resp = await client.responses.create(**kwargs)
-        out_text = getattr(resp, "output_text", None) or getattr(resp, "output", None)
-        if not out_text and hasattr(resp, "choices"):
-            out_text = resp.choices[0].message.content
-        return json.loads(out_text)
+        if schema:
+            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"gb_schema","schema":schema,"strict":True}}
+        else:
+            kwargs["response_format"] = {"type":"json_object"}
+        try:
+            resp = await client.responses.create(**kwargs)
+            out_text = getattr(resp, "output_text", None) or getattr(resp, "output", None)
+            if not out_text and hasattr(resp, "choices"):
+                out_text = resp.choices[0].message.content
+            return json.loads(out_text)
+        except Exception as e:
+            # fallback to chat.completions below
+            pass
 
-    messages = [{
-        "role": "user",
-        "content": [
+    # Fallback chat.completions (with 'json' keyword and response_format)
+    messages = [
+        {"role": "system", "content": "Eres un extractor estricto que devuelve SOLO json."},
+        {"role": "user", "content": [
+            {"type": "text", "text": JSON_GUARD},
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
-        ]
-    }]
-    resp = await client.chat.completions.create(
-        model=MODEL, messages=messages, temperature=0, response_format={"type": "json_object"}
-    )
-    txt = resp.choices[0].message.content
-    return json.loads(txt)
+        ]}
+    ]
+    try:
+        resp = await client.chat.completions.create(
+            model=MODEL, messages=messages, temperature=0, response_format={"type": "json_object"}
+        )
+        txt = resp.choices[0].message.content
+        return json.loads(txt)
+    except Exception as e:
+        # If API rejects because of the json guard requirement or any other, retry WITHOUT response_format
+        resp = await client.chat.completions.create(
+            model=MODEL, messages=messages, temperature=0
+        )
+        txt = resp.choices[0].message.content
+        data = extract_json_relaxed(txt)
+        if not data:
+            raise
+        return data
 
 async def ensure_rubric(image_b64: str, data: dict) -> dict:
     rub = canonicalize_rubric(data.get("rubric") or data.get("morphological_rubric"))

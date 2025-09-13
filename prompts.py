@@ -1,7 +1,9 @@
 # prompts.py
+JSON_GUARD = "IMPORTANTE: responde SOLO en json (application/json) sin texto adicional."
+
 EVALUATION_PROMPT_ES = """
 Eres un evaluador técnico de ganado de carne/leche. Analiza UNA sola imagen del animal.
-Responde SOLO en JSON válido según el schema. Usa valores estables (determinista; NO inventes).
+Responde SOLO en json válido según el schema. Usa valores estables (determinista; NO inventes).
 
 1) Rubrica morfológica (0–10, pasos de 0.5) con estos nombres exactos:
 - "Condición corporal (BCS)"
@@ -40,15 +42,18 @@ Reglas:
 """
 
 RUBRIC_ONLY_PROMPT_ES = """
-Devuelve SOLO {"rubric":{...}} con las 11 métricas numéricas (0–10, pasos 0.5) y nombres exactos.
+Devuelve SOLO {"rubric":{...}} en json con las 11 métricas (0–10, pasos 0.5) y nombres exactos.
+Responde en json puro sin texto adicional.
 """
 
 HEALTH_ONLY_PROMPT_ES = """
-Devuelve SOLO {"health":{"flags":[...],"notes":""}} evaluando las 9 banderas indicadas.
+Devuelve SOLO {"health":{"flags":[...],"notes":""}} en json evaluando las 9 banderas indicadas.
+Responde en json puro sin texto adicional.
 """
 
 BREED_ONLY_PROMPT_ES = """
-Devuelve SOLO {"breed":{"guess":"...","confidence":0-1}} seleccionando la raza más probable de la lista dada.
+Devuelve SOLO {"breed":{"guess":"...","confidence":0-1}} en json seleccionando la raza más probable de la lista dada.
+Responde en json puro sin texto adicional.
 """
 
 EVALUATION_SCHEMA = {

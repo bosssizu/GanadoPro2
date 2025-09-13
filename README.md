@@ -1,1 +1,1 @@
-GanadoBravo v4.3.1 — color scale + gauge + health grid + Pro mode UI. Deploy: Railway + envs.
+GanadoBravo v4.3.2 — robust JSON guard + fallback parser; color scale + gauge + health chips + Pro UI.
