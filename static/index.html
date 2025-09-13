@@ -28,6 +28,7 @@
     .chip{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;margin:4px 6px 0 0;font-size:12px}
     .chip.ok{background:#ecfdf5;border-color:#bbf7d0;color:#065f46}
     .chip.bad{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
+    .chip .sub{font-size:10px;opacity:.8;margin-left:6px}
     .gauge{width:80px;height:80px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#16a34a 0deg, #16a34a 0deg, #e5e7eb 0deg)}
     .gauge>div{background:#fff;border-radius:50%;width:58px;height:58px;display:grid;place-items:center;font-weight:900}
     #busyOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:saturate(130%) blur(2px)}
@@ -130,7 +131,13 @@ function renderViz(data, imgURL){
 
   const flags = (data.health?.flags||[]);
   const names = ["lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis","diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"];
-  const chips = names.map(n=>`<span class="chip ${flags.includes(n)?'bad':'ok'}">${n.replaceAll('_',' ')}</span>`).join('');
+  const chips = names.map(n=>{
+    const found = flags.includes(n);
+    const cls = found ? 'bad' : 'ok';
+    const label = n.replaceAll('_',' ');
+    const sub = found ? '— encontrada' : '— descartada';
+    return `<span class="chip ${cls}">${label}<span class="sub">${sub}</span></span>`;
+  }).join('');
   health.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Salud</div>
     <div>${chips}</div>
     <div class="muted" style="margin-top:8px">${(data.health?.notes||'').trim()||'Sin comentario adicional.'}</div>`;

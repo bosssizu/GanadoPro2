@@ -18,7 +18,7 @@ MODEL = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL) if OPENAI_BASE_URL else AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-app = FastAPI(title="GanadoBravo IA v4.3.2")
+app = FastAPI(title="GanadoBravo IA v4.3.3")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -38,54 +38,81 @@ async def _all_errors(request, exc):
 def _round05(x: float) -> float:
     return round(x*2)/2.0
 
-def _norm(s: str) -> str:
-    return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower().strip()
+def _norm_basic(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower().strip()
+    # elimina todo lo no alfanumérico para tolerar -, –, /, () y espacios
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
-CANON = {
-    _norm("Condición corporal (BCS)"): "Condición corporal (BCS)",
-    _norm("Conformación general"): "Conformación general",
-    _norm("Línea dorsal"): "Línea dorsal",
-    _norm("Angulación costillar"): "Angulación costillar",
-    _norm("Profundidad de pecho"): "Profundidad de pecho",
-    _norm("Aplomos (patas)"): "Aplomos (patas)",
-    _norm("Lomo"): "Lomo",
-    _norm("Grupo / muscling posterior"): "Grupo / muscling posterior",
-    _norm("Balance anterior–posterior"): "Balance anterior–posterior",
-    _norm("Ancho torácico"): "Ancho torácico",
-    _norm("Inserción de cola"): "Inserción de cola",
-}
-ORDER = list(CANON.values())
+CANON_LIST = [
+    "Condición corporal (BCS)",
+    "Conformación general",
+    "Línea dorsal",
+    "Angulación costillar",
+    "Profundidad de pecho",
+    "Aplomos (patas)",
+    "Lomo",
+    "Grupo / muscling posterior",
+    "Balance anterior–posterior",
+    "Ancho torácico",
+    "Inserción de cola",
+]
+
+# construye un mapa tolerante de variantes -> clave canónica
+def build_canon():
+    m = {}
+    variants = {}
+    for k in CANON_LIST:
+        v = [
+            k,
+            k.replace("–","-"),
+            k.replace(" / "," ").replace("/"," ").replace("(","").replace(")",""),
+            k.replace("–"," ").replace("-"," "),
+        ]
+        for a in v:
+            variants[_norm_basic(a)] = k
+    # variantes comunes manuales
+    variants[_norm_basic("balance anterior-posterior")] = "Balance anterior–posterior"
+    variants[_norm_basic("grupo muscling posterior")] = "Grupo / muscling posterior"
+    variants[_norm_basic("condicion corporal")] = "Condición corporal (BCS)"
+    variants[_norm_basic("aplomos patas")] = "Aplomos (patas)"
+    variants[_norm_basic("ancho toracico")] = "Ancho torácico"
+    variants[_norm_basic("insercion de cola")] = "Inserción de cola"
+    return variants
+
+CANON = build_canon()
+ORDER = CANON_LIST[:]  # orden fijo
 
 def canonicalize_rubric(rub: dict | None) -> dict:
     out = {}
     if not isinstance(rub, dict):
         return out
     for k, v in rub.items():
-        key = CANON.get(_norm(str(k)))
-        if not key: continue
-        try: out[key] = float(_round05(float(v)))
-        except: out[key] = 0.0
+        key = CANON.get(_norm_basic(str(k)))
+        if not key: 
+            continue
+        try:
+            out[key] = float(_round05(float(v)))
+        except Exception:
+            out[key] = 0.0
     return out
 
 def extract_json_relaxed(text: str) -> dict:
-    # Remove markdown fences and grab the largest {...} block
     if not text: return {}
     t = text.strip().replace('```json', '```').strip('`')
     m = re.search(r'\{.*\}', t, re.S)
-    if not m: 
-        # try arrays
+    if not m:
         m = re.search(r'\[.*\]', t, re.S)
     if not m: return {}
     frag = m.group(0)
     try:
         return json.loads(frag)
     except Exception:
-        # last resort: fix common trailing commas
         frag = re.sub(r',\s*([}\]])', r'\1', frag)
         return json.loads(frag)
 
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
-    # Prefer Responses API when available
     content = [
         {"type": "text", "text": JSON_GUARD},
         {"type": "text", "text": prompt},
@@ -104,11 +131,9 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
             if not out_text and hasattr(resp, "choices"):
                 out_text = resp.choices[0].message.content
             return json.loads(out_text)
-        except Exception as e:
-            # fallback to chat.completions below
+        except Exception:
             pass
 
-    # Fallback chat.completions (with 'json' keyword and response_format)
     messages = [
         {"role": "system", "content": "Eres un extractor estricto que devuelve SOLO json."},
         {"role": "user", "content": [
@@ -124,10 +149,7 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
         txt = resp.choices[0].message.content
         return json.loads(txt)
     except Exception as e:
-        # If API rejects because of the json guard requirement or any other, retry WITHOUT response_format
-        resp = await client.chat.completions.create(
-            model=MODEL, messages=messages, temperature=0
-        )
+        resp = await client.chat.completions.create(model=MODEL, messages=messages, temperature=0)
         txt = resp.choices[0].message.content
         data = extract_json_relaxed(txt)
         if not data:

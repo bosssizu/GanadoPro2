@@ -1,1 +1,1 @@
-GanadoBravo v4.3.2 — robust JSON guard + fallback parser; color scale + gauge + health chips + Pro UI.
+GanadoBravo v4.3.3 — robust rubric mapping (hyphen/en-dash/variants), health chips ENCONTRADA/DESCARTADA, JSON guards.
