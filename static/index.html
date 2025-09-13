@@ -41,6 +41,7 @@
 
     <p id="error" class="text-red-600 text-sm hidden"></p>
     <div id="notice" class="hidden w-full mt-2 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg p-2"></div>
+<button type="button" id="btn2D" class="hidden mt-2 px-3 py-2 rounded bg-gray-800 text-white text-sm">Tomar foto 2D</button>
   </form>
 
   <div id="viz" class="mt-6 w-full max-w-4xl grid gap-4"></div>
@@ -85,12 +86,17 @@ function chip(text,classes){ return `<span class="px-2 py-1 text-xs rounded-full
 function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
 function isAndroid(){ return /Android/.test(navigator.userAgent); }
 
+
 function openScanner(category){
   const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
   const params = `?category=${encodeURIComponent(category)}&return=${returnUrl}`;
   if (isIOS()){
     const url = "ganadobravo://scan" + params;
-    window.location.href = url;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    setTimeout(()=>{ try{ document.body.removeChild(iframe); }catch(e){} }, 2000);
   } else if (isAndroid()){
     const intent = `intent://scan${params}#Intent;scheme=ganadobravo;package=com.ganadobravo.scanner;end`;
     window.location.href = intent;
@@ -99,41 +105,39 @@ function openScanner(category){
 
 async function probeScannerSupport(){
   const scanBtn = document.getElementById('scanNowBtn');
-  // Default: hide scan button until confirmed
+  const btn2D = document.getElementById('btn2D');
   if (scanBtn) scanBtn.classList.add('hidden');
-  // Assume unsupported if not iOS/Android
+  if (btn2D) btn2D.classList.add('hidden');
   if (!(isIOS() || isAndroid())){
     notice.textContent = 'Tu teléfono no soporta escáner 3D.';
     notice.classList.remove('hidden');
-    // Offer 2D camera
-    document.querySelector('input[name="file"]').click();
+    if (btn2D) btn2D.classList.remove('hidden');
     return false;
   }
-  // Visibility probe
   let supported = false;
-  const onVis = () => { if (document.hidden) supported = true; };
-  document.addEventListener('visibilitychange', onVis, { once: true });
-  const t = Date.now();
+  const onHide = () => { if (document.hidden) supported = true; };
+  document.addEventListener('visibilitychange', onHide, { once: true });
   try{
-    const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
-    const ping = isIOS()
-      ? "ganadobravo://ping"
-      : "intent://ping#Intent;scheme=ganadobravo;package=com.ganadobravo.scanner;end";
-    // Try to open a lightweight ping
-    window.location.href = ping;
+    if (isIOS()){
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = "ganadobravo://ping";
+      document.body.appendChild(iframe);
+      setTimeout(()=>{ try{ document.body.removeChild(iframe); }catch(e){} }, 1200);
+    } else if (isAndroid()){
+      window.location.href = "intent://ping#Intent;scheme=ganadobravo;package=com.ganadobravo.scanner;end";
+    }
   }catch(e){}
-  await new Promise(r=>setTimeout(r, 1400));
-  document.removeEventListener('visibilitychange', onVis);
+  await new Promise(r=>setTimeout(r, 1300));
+  document.removeEventListener('visibilitychange', onHide);
   if (supported){
-    // Device+app responded → show scan
     if (scanBtn) scanBtn.classList.remove('hidden');
     notice.classList.add('hidden');
     return true;
-  }else{
-    // No response → treat as not supported
+  } else {
     notice.textContent = 'Tu teléfono no soporta escáner 3D.';
     notice.classList.remove('hidden');
-    document.querySelector('input[name="file"]').click();
+    if (btn2D) btn2D.classList.remove('hidden');
     return false;
   }
 }
@@ -142,10 +146,13 @@ proToggle.addEventListener('change', async () => {
   proFields.classList.toggle('hidden', !proToggle.checked);
   proHidden.value = proToggle.checked ? '1' : '';
   if (proToggle.checked){
-    // Immediately probe support; do NOT show the "Escanear ahora" button unless confirmed
     await probeScannerSupport();
   } else {
     notice.classList.add('hidden');
+    const scanBtn = document.getElementById('scanNowBtn');
+    const btn2D = document.getElementById('btn2D');
+    if (scanBtn) scanBtn.classList.add('hidden');
+    if (btn2D) btn2D.classList.add('hidden');
   }
 });
 
@@ -153,7 +160,10 @@ document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
   const category = document.querySelector('select[name="category"]').value;
   openScanner(category);
 });
-document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{ const category = document.querySelector('select[name="category"]').value; openScanner(category); });
+
+document.getElementById('btn2D')?.addEventListener('click', ()=>{
+  document.querySelector('input[name="file"]').click();
+});
 
 function renderViz(data,imgURL){
   const v = document.getElementById('viz'); v.innerHTML='';
