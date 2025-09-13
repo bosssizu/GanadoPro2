@@ -9,7 +9,7 @@
 <body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
   <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
 
-  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data">
+  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data" method="post" action="/api/evaluate" enctype="multipart/form-data">
     <label class="block text-sm font-semibold">Categoría</label>
     <select name="category" required class="w-full border rounded-lg p-2">
       <option value="vaca flaca">Vaca flaca</option>
