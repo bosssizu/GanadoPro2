@@ -1,2 +1,6 @@
 import Foundation
-enum Config { static let backendURL = URL(string: "https://YOUR-DEPLOY-URL/api/evaluate")! }
+
+struct Config {
+    // Cambia esta URL a tu deploy
+    static let backendURL = URL(string: "https://YOUR-BACKEND-URL/api/evaluate")!
+}

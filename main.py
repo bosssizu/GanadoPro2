@@ -1,34 +1,50 @@
 from __future__ import annotations
 
+import os, json, base64, hashlib, asyncio, math, typing
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from openai import AsyncOpenAI
-import json, base64, os, asyncio, hashlib, math, typing
 
 import prompts
 import lidar
-
-ALLOWED_DECISIONS = {"NO_COMPRAR","CONSIDERAR_BAJO","CONSIDERAR_ALTO","COMPRAR"}
 
 app = FastAPI(title="GanadoBravo IA v4.1 Pro")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Caches en memoria
-RUBRIC_CACHE: dict[str, dict] = {}
-HEALTH_BREED_CACHE: dict[str, dict] = {}
+# Caches
+RUBRIC_CACHE = {}
+HEALTH_BREED_CACHE = {}
 
-def _b64(data: bytes) -> str:
-    return base64.b64encode(data).decode("utf-8")
-
+def _b64(b: bytes) -> str: return base64.b64encode(b).decode("utf-8")
 def _norm_half_steps(x: float) -> float:
     x = max(0.0, min(10.0, float(x)))
     return round(x * 2.0) / 2.0
 
-def sha1(b: bytes) -> str:
-    return hashlib.sha1(b).hexdigest()
+def coerce_health(obj: dict) -> dict:
+    if isinstance(obj, dict) and isinstance(obj.get("health"), dict):
+        h = obj["health"]
+    else:
+        h = {"flags": (obj or {}).get("flags", []), "notes": (obj or {}).get("notes", "")}
+    if not isinstance(h.get("flags", []), list): h["flags"] = []
+    if not isinstance(h.get("notes", ""), str): h["notes"] = str(h.get("notes", ""))
+    return {"flags": h.get("flags", []), "notes": h.get("notes", "")}
+
+def coerce_breed(obj: dict) -> dict:
+    if isinstance(obj, dict) and isinstance(obj.get("breed"), dict):
+        b = obj["breed"]
+    else:
+        b = {"guess": (obj or {}).get("guess", ""), "confidence": (obj or {}).get("confidence", 0)}
+    guess = b.get("guess", "")
+    try: conf = float(b.get("confidence", 0) or 0)
+    except Exception: conf = 0.0
+    conf = max(0.0, min(1.0, conf))
+    if not isinstance(guess, str): guess = str(guess)
+    return {"guess": guess, "confidence": conf}
+
+def sha1(b: bytes) -> str: return hashlib.sha1(b).hexdigest()
 
 CATEGORY_WEIGHTS = {
     "levante": {
@@ -65,12 +81,9 @@ def weighted_score(rubric: dict, category: str) -> float:
     return s
 
 def fallback_decision_from_score(gs: float):
-    if gs >= 8.5:
-        return "COMPRAR", "Excelente relación estructura/BCS para el objetivo."
-    if gs >= 7.5:
-        return "CONSIDERAR_ALTO", "Muy buen candidato; revisar precio y sanidad."
-    if gs >= 6.0:
-        return "CONSIDERAR_BAJO", "Aceptable, pero requiere manejo y precio competitivo."
+    if gs >= 8.5: return "COMPRAR", "Excelente relación estructura/BCS para el objetivo."
+    if gs >= 7.5: return "CONSIDERAR_ALTO", "Muy buen candidato; revisar precio y sanidad."
+    if gs >= 6.0: return "CONSIDERAR_BAJO", "Aceptable, pero requiere manejo y precio competitivo."
     return "NO_COMPRAR", "Debilidades relevantes para el objetivo actual."
 
 def adjust_from_lidar(category: str, m: dict) -> float:
@@ -81,18 +94,13 @@ def adjust_from_lidar(category: str, m: dict) -> float:
         height = float(m.get("withers_height_m", float('nan')))
         stance = float(m.get("stance_asymmetry_idx", float('nan')))
         H_over_L = height/length if (height>0 and length>0) else float('nan')
-
         if category == "engorde":
-            if (girth >= 1.90) and (length >= 1.70):
-                delta += 0.5
+            if (girth >= 1.90) and (length >= 1.70): delta += 0.5
         elif category == "levante":
-            if (H_over_L >= 0.70 and H_over_L <= 0.80) and (not math.isfinite(stance) or stance <= 0.15):
-                delta += 0.4
+            if (H_over_L >= 0.70 and H_over_L <= 0.80) and (not math.isfinite(stance) or stance <= 0.15): delta += 0.4
         elif category == "vaca flaca":
-            if (length >= 1.60) and (height >= 1.25) and (not math.isfinite(girth) or girth < 1.85):
-                delta += 0.3
-    except Exception:
-        pass
+            if (length >= 1.60) and (height >= 1.25) and (not math.isfinite(girth) or girth < 1.85): delta += 0.3
+    except Exception: pass
     delta = max(-1.0, min(1.0, delta))
     return _norm_half_steps(delta)
 
@@ -155,7 +163,7 @@ async def evaluate(
         b64 = _b64(img_bytes)
         key = sha1(img_bytes)
 
-        # Pro mode (no altera 2D si no se envía)
+        # Pro mode (optional)
         lidar_metrics = None
         if pro and mesh_file is not None:
             try:
@@ -165,24 +173,30 @@ async def evaluate(
             except Exception as ex:
                 lidar_metrics = {"error": str(ex)}
 
-        # 1) Rubric (cache por imagen)
+        # 1) Rubric (cache)
         rubric = RUBRIC_CACHE.get(key)
         if not rubric:
             r = await run_prompt(prompts.PROMPT_1, b64, prompts.RUBRIC_SCHEMA)
             rubric = r.get("rubric", {})
-            rubric = {k: _norm_half_steps(v) for k,v in rubric.items()}
+            # clamp & 0.5 steps
+            normed = {}
+            for k in prompts.RUBRIC_METRICS:
+                try: v = float(rubric.get(k, 0.0))
+                except Exception: v = 0.0
+                normed[k] = _norm_half_steps(v)
+            rubric = normed
             RUBRIC_CACHE[key] = rubric
 
-        # 2) Salud y Raza (cache por imagen)
+        # 2) Salud + Raza (cache)
         hb = HEALTH_BREED_CACHE.get(key)
         if not hb:
             health_task = asyncio.create_task(run_prompt(prompts.PROMPT_4, b64, prompts.HEALTH_SCHEMA))
-            breed_task = asyncio.create_task(run_prompt(prompts.PROMPT_5, b64, prompts.BREED_SCHEMA))
+            breed_task  = asyncio.create_task(run_prompt(prompts.PROMPT_5,  b64, prompts.BREED_SCHEMA))
             res4, res5 = await asyncio.gather(health_task, breed_task)
-            hb = {"health": res4.get("health", {}), "breed": res5.get("breed", {})}
+            hb = {"health": coerce_health(res4), "breed": coerce_breed(res5)}
             HEALTH_BREED_CACHE[key] = hb
 
-        # 3) Decisión (LLM + fallback)
+        # 3) Decisión
         prompt3 = (
             prompts.PROMPT_3.replace("{category}", category)
             + "\nRubric JSON:\n" + json.dumps({"rubric": rubric}, ensure_ascii=False)
@@ -193,37 +207,33 @@ async def evaluate(
         global_score = float(res3.get("global_score", weighted_score(rubric, category)))
         global_score = _norm_half_steps(global_score)
 
-        # Ajuste determinista si hay LiDAR
-        if lidar_metrics and not isinstance(lidar_metrics, dict) or (isinstance(lidar_metrics, dict) and "error" not in lidar_metrics):
-            try:
-                global_score = _norm_half_steps(global_score + adjust_from_lidar(category, lidar_metrics))
-            except Exception:
-                pass
+        # Ajuste con LiDAR
+        if isinstance(lidar_metrics, dict) and "error" not in lidar_metrics:
+            global_score = _norm_half_steps(global_score + adjust_from_lidar(category, lidar_metrics))
 
         decision_level = res3.get("decision_level")
-        decision_text = res3.get("decision_text", "")
-        rationale = res3.get("rationale", "")
-
-        if decision_level not in ALLOWED_DECISIONS:
+        decision_text  = res3.get("decision_text", "")
+        rationale      = res3.get("rationale", "")
+        if decision_level not in {"NO_COMPRAR","CONSIDERAR_BAJO","CONSIDERAR_ALTO","COMPRAR"}:
             dl, txt = fallback_decision_from_score(global_score)
             decision_level, decision_text = dl, txt
             if not rationale:
-                rationale = "Ajustado automáticamente desde 'global_score' y pesos por categoría."
+                rationale = "Ajustado automáticamente desde 'global_score' por pesos/offsets."
 
-        return {
+        return {{
             "engine": "gpt-4o-mini",
             "mode": ("pro" if lidar_metrics else "standard"),
             "category": category,
             "rubric": rubric,
-            "decision": {
+            "decision": {{
                 "global_score": global_score,
                 "decision_level": decision_level,
                 "decision_text": decision_text,
                 "rationale": rationale
-            },
+            }},
             "health": hb["health"],
             "breed": hb["breed"],
             "lidar_metrics": lidar_metrics
-        }
+        }}
     except Exception as e:
-        return {"error": str(e)}
+        return {{"error": str(e)}}

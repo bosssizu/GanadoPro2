@@ -1,14 +1,13 @@
 from __future__ import annotations
 import io, math, numpy as np
-from typing import Dict, Any
+from typing import Any, Dict
 try:
     import trimesh
 except Exception:
     trimesh = None
 
-# --- RANSAC ground plane ---
-import random
 def _fit_plane_ransac(points: np.ndarray, max_iters: int = 800, thresh: float = 0.02):
+    import random
     N = points.shape[0]
     if N < 50:
         n0 = np.array([0,1,0], float); d0 = 0.0
@@ -16,12 +15,12 @@ def _fit_plane_ransac(points: np.ndarray, max_iters: int = 800, thresh: float = 
     best_inliers = None; best_n=None; best_d=None
     rng = random.Random(42); idx = list(range(N))
     for _ in range(max_iters):
-        i1, i2, i3 = rng.sample(idx, 3)
-        p1, p2, p3 = points[i1], points[i2], points[i3]
-        v1, v2 = p2-p1, p3-p1
-        n = np.cross(v1, v2); norm = np.linalg.norm(n)
+        i1,i2,i3 = rng.sample(idx,3)
+        p1,p2,p3 = points[i1],points[i2],points[i3]
+        v1,v2 = p2-p1, p3-p1
+        n = np.cross(v1,v2); norm = np.linalg.norm(n)
         if norm < 1e-6: continue
-        n = n / norm; d = -float(n @ p1)
+        n = n/norm; d = -float(n @ p1)
         dist = np.abs(points @ n + d)
         inl = dist <= thresh
         if best_inliers is None or inl.sum() > best_inliers.sum():
@@ -35,20 +34,12 @@ def _fit_plane_ransac(points: np.ndarray, max_iters: int = 800, thresh: float = 
 
 def _to_numpy_vertices(mesh) -> np.ndarray:
     if hasattr(mesh, 'vertices'):
-        V = np.asarray(mesh.vertices, dtype=float)
-    else:
-        V = np.asarray(mesh.get('vertices', []), dtype=float)
-    return V
+        return np.asarray(mesh.vertices, dtype=float)
+    return np.asarray(mesh.get('vertices', []), dtype=float)
 
 def extract_lidar_metrics(file_bytes: bytes, filename: str, meta: Dict[str, Any]) -> Dict[str, Any]:
     if trimesh is None:
-        return {
-            "quality": {"coverage_pct": 0.0, "noise_level": 1.0, "ground_plane_fit_rmse": float("nan"), "scale_warning": True, "notes": "trimesh no disponible"},
-            "withers_height_m": float('nan'), "body_length_m": float('nan'), "heart_girth_m": float('nan'),
-            "chest_depth_m": float('nan'), "hip_width_m": float('nan'), "rump_angle_deg": float('nan'),
-            "estimated_volume_m3": float('nan'), "stance_asymmetry_idx": float('nan'), "weight_est_kg": float('nan'),
-        }
-    # Cargar
+        return {"error": "trimesh no disponible"}
     file_obj = io.BytesIO(file_bytes)
     ft = filename.split('.')[-1].lower()
     try:
@@ -62,32 +53,28 @@ def extract_lidar_metrics(file_bytes: bytes, filename: str, meta: Dict[str, Any]
     V = _to_numpy_vertices(mesh).astype(float)
     V = V[np.isfinite(V).all(axis=1)]
     if V.size == 0:
-        raise ValueError("Malla vacía o formato no soportado")
+        return {"error": "Malla vacía o no soportada"}
 
-    # Ground plane & recorte
+    # Ground plane + crop
     n, d, inliers, rmse = _fit_plane_ransac(V, max_iters=800, thresh=0.02)
     dist_signed = V @ n + d
     keep = dist_signed >= -0.01
     V = V[keep]
 
-    # PCA
+    # PCA axes
     C = V.mean(0, keepdims=True)
     X = V - C
-    U, S, Vt = np.linalg.svd(X, full_matrices=False)
+    U,S,Vt = np.linalg.svd(X, full_matrices=False)
     axes = Vt
     Xp = X @ axes.T
-
     L = float(Xp[:,0].ptp())
     W = float(Xp[:,1].ptp())
     H = float(Xp[:,2].ptp())
 
-    # Sección torácica aprox 40% del largo
+    # Heart girth approx by slab hull at 40% length
     x_min, x_max = float(Xp[:,0].min()), float(Xp[:,0].max())
-    x_center = x_min + 0.40*(x_max - x_min)
-    slab = (Xp[:,0] >= x_center-0.03) & (Xp[:,0] <= x_center+0.03)
+    slab = (Xp[:,0] >= x_min + 0.37*(x_max-x_min)) & (Xp[:,0] <= x_min + 0.43*(x_max-x_min))
     yz = Xp[slab][:,1:3]
-
-    # Perímetro por convex hull (2D)
     heart_girth = float('nan')
     if yz.shape[0] >= 50:
         pts = yz[np.lexsort((yz[:,1], yz[:,0]))]
@@ -106,30 +93,25 @@ def extract_lidar_metrics(file_bytes: bytes, filename: str, meta: Dict[str, Any]
             per += float(np.linalg.norm(np.array(b)-np.array(a)))
         heart_girth = float(per)
 
-    # Volumen: malla o convex hull
+    # Volume/peso aprox
     try:
-        if mesh.is_volume:
-            est_vol = float(mesh.volume)
-        else:
-            est_vol = float(mesh.convex_hull.volume)
+        est_vol = float(mesh.volume if mesh.is_volume else mesh.convex_hull.volume)
     except Exception:
         est_vol = float('nan')
+    weight_est = (heart_girth**2 * L)/11877.0 if np.isfinite(heart_girth) and heart_girth>0 else float('nan')
 
-    # Peso por "cinta"
-    if math.isfinite(heart_girth) and heart_girth>0:
-        weight_est = (heart_girth**2 * L) / 11877.0
-    else:
-        weight_est = float('nan')
+    quality = {
+        "coverage_pct": 80.0 if V.shape[0] > 5_000 else 50.0,
+        "noise_level": 0.08 if V.shape[0] > 5_000 else 0.2,
+        "ground_plane_fit_rmse": rmse,
+        "scale_warning": not (0.9 <= H <= 1.9),
+    }
 
-    coverage_pct = 80.0 if V.shape[0] > 5000 else 50.0
-    noise_level = 0.08 if coverage_pct >= 80 else 0.2
-    scale_warning = not (0.9 <= H <= 1.9)
-
-    return {
-        "quality": {"coverage_pct": coverage_pct, "noise_level": noise_level, "ground_plane_fit_rmse": rmse, "scale_warning": scale_warning},
+    return {{
+        "quality": quality,
         "withers_height_m": H, "body_length_m": L, "heart_girth_m": heart_girth,
         "chest_depth_m": float(np.ptp(yz[:,1])) if isinstance(yz, np.ndarray) and yz.size else float('nan'),
         "hip_width_m": W, "rump_angle_deg": float('nan'),
         "estimated_volume_m3": est_vol, "stance_asymmetry_idx": float('nan'),
         "weight_est_kg": weight_est,
-    }
+    }}

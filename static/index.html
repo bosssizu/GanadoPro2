@@ -4,82 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GanadoBravo IA</title>
-  <script src="https://cdn.tailwindcss.com">
-// deep-link helpers
-function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
-function isAndroid(){ return /Android/.test(navigator.userAgent); }
-
-function openScanner(category){
-  const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
-  const params = `?category=${encodeURIComponent(category)}&return=${returnUrl}`;
-
-  let opened = false;
-  const t = Date.now();
-
-  if (isIOS()){
-    // Try custom URL scheme (requires iOS app registering ganadobravo://)
-    const url = "ganadobravo://scan" + params;
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    opened = true;
-    // Fallback to App Store/Instruction after timeout
-    setTimeout(()=>{
-      if (Date.now()-t < 1800){
-        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
-document.getElementById('notice').classList.remove('hidden');
-document.querySelector('input[name="file"]').click();
-      }
-      document.body.removeChild(iframe);
-    }, 1500);
-  } else if (isAndroid()){
-    // Android intent to open the app if installed
-    const pkg = "com.ganadobravo.scanner";
-    const intent = `intent://scan${params}#Intent;scheme=ganadobravo;package=${pkg};end`;
-    window.location.href = intent;
-    opened = true;
-    setTimeout(()=>{
-      if (Date.now()-t < 1800){
-        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
-document.getElementById('notice').classList.remove('hidden');
-document.querySelector('input[name="file"]').click();
-      }
-    }, 1500);
-  } else {
-    alert("Para escanear en 3D, usa la app móvil (iOS/Android) o sube un archivo 3D exportado (OBJ/PLY/GLB).");
-  }
-  return opened;
-}
-
-proToggle.addEventListener('change', () => {
-  proFields.classList.toggle('hidden', !proToggle.checked);
-  proHidden.value = proToggle.checked ? '1' : '';
-  if (proToggle.checked){
-    // try to open scanner immediately (uses the toggle click as a user gesture)
-    const category = document.querySelector('select[name="category"]').value;
-    openScanner(category);
-  }
-});
-
-document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
-  const category = document.querySelector('select[name="category"]').value;
-  openScanner(category);
-});
-</script>
-
-</body>
-</html>
-
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
   <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
 
-  <form id="uploadForm" class="w-full max-w-md bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data">
+  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data">
     <label class="block text-sm font-semibold">Categoría</label>
     <select name="category" required class="w-full border rounded-lg p-2">
       <option value="vaca flaca">Vaca flaca</option>
-      <option value="levante">Levante</option>
+      <option value="levante" selected>Levante</option>
       <option value="engorde">Engorde</option>
     </select>
 
@@ -88,12 +22,13 @@ document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
 
     <label class="flex items-center gap-2 mt-2">
       <input type="checkbox" id="proToggle" class="h-4 w-4">
-      <span class="text-sm font-semibold">Pro mode (LiDAR/Depth) — Escanear</span>
+      <span class="text-sm font-semibold">Pro mode (LiDAR/Depth)</span>
     </label>
     <input type="hidden" name="pro" id="proHidden" value="">
 
-    <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">\n  <button type="button" id="scanNowBtn" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700">Escanear ahora</button>\n  <div class="text-xs text-gray-600">¿No tienes la app o no se abre? Usa una app externa (Polycam, Scaniverse) y luego <span class="underline">sube el archivo 3D</span> abajo.</div>
-      <label class="block text-sm font-semibold">Escanear (por ahora, sube el archivo OBJ/PLY/GLB/USDZ)</label>
+    <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">
+      <button type="button" id="scanNowBtn" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700">Escanear ahora</button>
+      <div class="text-xs text-gray-600">¿No tienes la app? Usa Polycam/Scaniverse y luego sube tu archivo 3D.</div>
       <input type="file" name="mesh_file" accept=".obj,.ply,.glb,.gltf,.usd,.usdz" class="block w-full text-sm border rounded-lg p-2 bg-white">
       <label class="block text-xs text-gray-600">Meta JSON (opcional)</label>
       <textarea name="meta_json" rows="3" class="w-full text-xs border rounded-lg p-2" placeholder='{"units":"m","scale":1.0}'></textarea>
@@ -105,11 +40,11 @@ document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
     </button>
 
     <p id="error" class="text-red-600 text-sm hidden"></p>
-<div id="notice" class="hidden w-full max-w-md mt-2 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg p-2"></div>
+    <div id="notice" class="hidden w-full mt-2 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg p-2"></div>
   </form>
 
-  <div id="viz" class="mt-6 w-full max-w-3xl grid gap-4"></div>
-  <details class="w-full max-w-3xl bg-white p-3 rounded-xl shadow mt-4">
+  <div id="viz" class="mt-6 w-full max-w-4xl grid gap-4"></div>
+  <details class="w-full max-w-4xl bg-white p-3 rounded-xl shadow mt-4">
     <summary class="cursor-pointer font-semibold">Ver JSON</summary>
     <pre id="out" class="text-xs overflow-auto"></pre>
   </details>
@@ -129,7 +64,6 @@ const RUBRIC_ORDER = [
   "Inserción de cola"
 ];
 
-
 const form = document.getElementById('uploadForm');
 const btn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
@@ -139,196 +73,79 @@ const errorP = document.getElementById('error');
 const proToggle = document.getElementById('proToggle');
 const proFields = document.getElementById('proFields');
 const proHidden = document.getElementById('proHidden');
+const notice = document.getElementById('notice');
 
-proToggle.addEventListener('change', () => {
-  proFields.classList.toggle('hidden', !proToggle.checked);
-  proHidden.value = proToggle.checked ? '1' : '';
-});
-
-function scoreColor(s){
-  if(s>=8.5) return 'bg-emerald-600';
-  if(s>=7.5) return 'bg-green-600';
-  if(s>=6.0) return 'bg-amber-600';
-  return 'bg-rose-600';
-}
-function badgeText(dec){
-  return {
-    "COMPRAR":["Comprar","bg-emerald-100 text-emerald-700"],
-    "CONSIDERAR_ALTO":["Considerar alto","bg-green-100 text-green-700"],
-    "CONSIDERAR_BAJO":["Considerar bajo","bg-amber-100 text-amber-800"],
-    "NO_COMPRAR":["No comprar","bg-rose-100 text-rose-700"]
-  }[dec] || [dec,'bg-gray-100 text-gray-700'];
-}
-function donutSVG(value){
-  const max=10, pct=(value/max)*100;
-  const r=40, len=2*Math.PI*r, off=len*(1-pct/100);
-  return `
-  <svg viewBox="0 0 88 88" class="w-28 h-28">
-    <circle cx="44" cy="44" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-    <circle cx="44" cy="44" r="${r}" fill="none" stroke="currentColor" stroke-width="8"
-            stroke-dasharray="${len}" stroke-dashoffset="${off}" stroke-linecap="round"
-            transform="rotate(-90 44 44)"/>
-    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">${Number(value).toFixed(1)}</text>
-  </svg>`;
-}
-function metricBar(name,val){
-  const pct = (val/10)*100;
-  return `
-    <div>
-      <div class="flex justify-between text-xs mb-1"><span>${name}</span><span>${val}</span></div>
-      <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div class="h-2 ${scoreColor(val)}" style="width:${pct}%"></div>
-      </div>
-    </div>`;
-}
+function scoreColor(s){ if(s>=8.5) return 'bg-emerald-600'; if(s>=7.5) return 'bg-green-600'; if(s>=6.0) return 'bg-amber-600'; return 'bg-rose-600'; }
+function badgeText(dec){ return ({"COMPRAR":["Comprar","bg-emerald-100 text-emerald-700"],"CONSIDERAR_ALTO":["Considerar alto","bg-green-100 text-green-700"],"CONSIDERAR_BAJO":["Considerar bajo","bg-amber-100 text-amber-800"],"NO_COMPRAR":["No comprar","bg-rose-100 text-rose-700"]}[dec] || [dec,'bg-gray-100 text-gray-700']); }
+function donutSVG(value){ const max=10, pct=(value/max)*100; const r=40, len=2*Math.PI*r, off=len*(1-pct/100);
+  return `<svg viewBox="0 0 88 88" class="w-28 h-28"><circle cx="44" cy="44" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/><circle cx="44" cy="44" r="${r}" fill="none" stroke="currentColor" stroke-width="8" stroke-dasharray="${len}" stroke-dashoffset="${off}" stroke-linecap="round" transform="rotate(-90 44 44)"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">${Number(value).toFixed(1)}</text></svg>`; }
+function metricBar(name,val){ const pct = (val/10)*100; return `<div><div class="flex justify-between text-xs mb-1"><span>${name}</span><span>${val}</span></div><div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-2 ${scoreColor(val)}" style="width:${pct}%"></div></div></div>`; }
 function chip(text,classes){ return `<span class="px-2 py-1 text-xs rounded-full ${classes}">${text}</span>`; }
 
-function renderViz(data,imgURL){
-  const v = document.getElementById('viz');
-  v.innerHTML = '';
-
-  const [label,cls] = badgeText(data.decision?.decision_level||''); 
-  const score = data.decision?.global_score||0;
-  const mode = data.mode==='pro' ? chip('Pro (Depth/LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
-  const head = document.createElement('div');
-  head.className = 'bg-white rounded-2xl shadow p-4 flex items-center gap-4';
-  head.innerHTML = `
-    <img src="${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/>
-    <div class="flex-1">
-      <div class="flex items-center gap-2 mb-1">
-        <span class="text-sm uppercase tracking-wide text-gray-500">${data.category}</span>
-        ${mode}
-        <span class="px-2 py-1 text-xs rounded ${cls}">${label}</span>
-      </div>
-      <div class="text-sm text-gray-700">${data.decision?.decision_text||''}</div>
-    </div>
-    <div class="text-gray-700" style="color:inherit;">${donutSVG(score)}</div>
-  `;
-  v.appendChild(head);
-
-  const met = document.createElement('div');
-  met.className = 'bg-white rounded-2xl shadow p-4';
-  met.innerHTML = '<div class="font-semibold mb-3">Métricas morfológicas</div>';
-  const grid = document.createElement('div');
-  grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
-  RUBRIC_ORDER.forEach((k)=>{ const val = Number(data.rubric?.[k] ?? 0); grid.innerHTML += metricBar(k, val); });
-  met.appendChild(grid);
-  v.appendChild(met);
-
-  const hb = document.createElement('div');
-  hb.className = 'bg-white rounded-2xl shadow p-4 grid sm:grid-cols-2 gap-4';
-  const flags = (data.health?.flags||[]);
-  hb.innerHTML = `
-    <div>
-      <div class="font-semibold mb-2">Salud</div>
-      <div class="flex flex-wrap gap-2 mb-2">${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div>
-      <div class="text-sm text-gray-700">${data.health?.notes||''}</div>
-    </div>
-    <div>
-      <div class="font-semibold mb-2">Raza (estimada)</div>
-      <div class="flex items-center gap-2">
-        ${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}
-        <span class="text-xs text-gray-600">conf: ${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span>
-      </div>
-    </div>`;
-  v.appendChild(hb);
-
-  if(data.lidar_metrics && !data.lidar_metrics.error){
-    const lm = document.createElement('div');
-    lm.className = 'bg-white rounded-2xl shadow p-4';
-    lm.innerHTML = '<div class="font-semibold mb-3">Métricas 3D</div>';
-    const tbl = document.createElement('div');
-    tbl.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
-    Object.entries(data.lidar_metrics).forEach(([k,val])=>{
-      if(typeof val === 'object') return;
-      tbl.innerHTML += `<div class="flex justify-between"><span class="text-gray-600">${k}</span><span class="font-medium">${Number.isFinite(val)? val: '—'}</span></div>`;
-    });
-    lm.appendChild(tbl);
-    v.appendChild(lm);
-  }
-}
-
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  errorP.classList.add('hidden');
-  out.textContent = '';
-  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
-
-  const fd = new FormData(form);
-  const fileIn = form.querySelector('input[name="file"]');
-  const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
-
-  try {
-    const res = await fetch('/api/evaluate', { method: 'POST', body: fd });
-    const txt = await res.text();
-    let data;
-    try { data = JSON.parse(txt); } catch { throw new Error(txt || 'Respuesta no-JSON'); }
-    if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
-    out.textContent = JSON.stringify(data, null, 2);
-    if(imgPreviewURL) renderViz(data, imgPreviewURL);
-  } catch (err) {
-    console.error(err);
-    errorP.textContent = (err && err.message) ? err.message : String(err);
-    errorP.classList.remove('hidden');
-  } finally {
-    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
-  }
-});
-
-// deep-link helpers
 function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
 function isAndroid(){ return /Android/.test(navigator.userAgent); }
 
 function openScanner(category){
   const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
   const params = `?category=${encodeURIComponent(category)}&return=${returnUrl}`;
-
-  let opened = false;
-  const t = Date.now();
-
   if (isIOS()){
-    // Try custom URL scheme (requires iOS app registering ganadobravo://)
     const url = "ganadobravo://scan" + params;
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    opened = true;
-    // Fallback to App Store/Instruction after timeout
-    setTimeout(()=>{
-      if (Date.now()-t < 1800){
-        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
-document.getElementById('notice').classList.remove('hidden');
-document.querySelector('input[name="file"]').click();
-      }
-      document.body.removeChild(iframe);
-    }, 1500);
+    window.location.href = url;
   } else if (isAndroid()){
-    // Android intent to open the app if installed
-    const pkg = "com.ganadobravo.scanner";
-    const intent = `intent://scan${params}#Intent;scheme=ganadobravo;package=${pkg};end`;
+    const intent = `intent://scan${params}#Intent;scheme=ganadobravo;package=com.ganadobravo.scanner;end`;
     window.location.href = intent;
-    opened = true;
-    setTimeout(()=>{
-      if (Date.now()-t < 1800){
-        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
-document.getElementById('notice').classList.remove('hidden');
-document.querySelector('input[name="file"]').click();
-      }
-    }, 1500);
-  } else {
-    alert("Para escanear en 3D, usa la app móvil (iOS/Android) o sube un archivo 3D exportado (OBJ/PLY/GLB).");
   }
-  return opened;
 }
 
-proToggle.addEventListener('change', () => {
+async function probeScannerSupport(){
+  const scanBtn = document.getElementById('scanNowBtn');
+  // Default: hide scan button until confirmed
+  if (scanBtn) scanBtn.classList.add('hidden');
+  // Assume unsupported if not iOS/Android
+  if (!(isIOS() || isAndroid())){
+    notice.textContent = 'Tu teléfono no soporta escáner 3D.';
+    notice.classList.remove('hidden');
+    // Offer 2D camera
+    document.querySelector('input[name="file"]').click();
+    return false;
+  }
+  // Visibility probe
+  let supported = false;
+  const onVis = () => { if (document.hidden) supported = true; };
+  document.addEventListener('visibilitychange', onVis, { once: true });
+  const t = Date.now();
+  try{
+    const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
+    const ping = isIOS()
+      ? "ganadobravo://ping"
+      : "intent://ping#Intent;scheme=ganadobravo;package=com.ganadobravo.scanner;end";
+    // Try to open a lightweight ping
+    window.location.href = ping;
+  }catch(e){}
+  await new Promise(r=>setTimeout(r, 1400));
+  document.removeEventListener('visibilitychange', onVis);
+  if (supported){
+    // Device+app responded → show scan
+    if (scanBtn) scanBtn.classList.remove('hidden');
+    notice.classList.add('hidden');
+    return true;
+  }else{
+    // No response → treat as not supported
+    notice.textContent = 'Tu teléfono no soporta escáner 3D.';
+    notice.classList.remove('hidden');
+    document.querySelector('input[name="file"]').click();
+    return false;
+  }
+}
+
+proToggle.addEventListener('change', async () => {
   proFields.classList.toggle('hidden', !proToggle.checked);
   proHidden.value = proToggle.checked ? '1' : '';
   if (proToggle.checked){
-    // try to open scanner immediately (uses the toggle click as a user gesture)
-    const category = document.querySelector('select[name="category"]').value;
-    openScanner(category);
+    // Immediately probe support; do NOT show the "Escanear ahora" button unless confirmed
+    await probeScannerSupport();
+  } else {
+    notice.classList.add('hidden');
   }
 });
 
@@ -336,10 +153,53 @@ document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
   const category = document.querySelector('select[name="category"]').value;
   openScanner(category);
 });
+document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{ const category = document.querySelector('select[name="category"]').value; openScanner(category); });
+
+function renderViz(data,imgURL){
+  const v = document.getElementById('viz'); v.innerHTML='';
+  const [label,cls] = badgeText(data.decision?.decision_level||''); const score = data.decision?.global_score||0;
+  const mode = data.mode==='pro' ? chip('Pro (Depth/LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
+  const head = document.createElement('div'); head.className='bg-white rounded-2xl shadow p-4 flex items-center gap-4';
+  head.innerHTML = `<img src="${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/><div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="text-sm uppercase tracking-wide text-gray-500">${data.category}</span> ${mode} <span class="px-2 py-1 text-xs rounded ${cls}">${label}</span></div><div class="text-sm text-gray-700">${data.decision?.decision_text||''}</div></div><div class="text-gray-700" style="color:inherit;">${donutSVG(score)}</div>`;
+  v.appendChild(head);
+  const met = document.createElement('div'); met.className = 'bg-white rounded-2xl shadow p-4'; met.innerHTML = '<div class="font-semibold mb-3">Métricas morfológicas</div>';
+  const grid = document.createElement('div'); grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+  RUBRIC_ORDER.forEach((k)=>{ const val = Number(data.rubric?.[k] ?? 0); grid.innerHTML += metricBar(k, val); });
+  met.appendChild(grid); v.appendChild(met);
+  const hb = document.createElement('div'); hb.className='bg-white rounded-2xl shadow p-4 grid sm:grid-cols-2 gap-4';
+  const flags = (data.health?.flags||[]);
+  hb.innerHTML = `<div><div class="font-semibold mb-2">Salud</div><div class="flex flex-wrap gap-2 mb-2">${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div><div class="text-sm text-gray-700">${data.health?.notes||''}</div></div><div><div class="font-semibold mb-2">Raza (estimada)</div><div class="flex items-center gap-2">${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}<span class="text-xs text-gray-600">conf: ${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span></div></div>`;
+  v.appendChild(hb);
+  if(data.lidar_metrics && !data.lidar_metrics.error){
+    const lm = document.createElement('div'); lm.className='bg-white rounded-2xl shadow p-4'; lm.innerHTML = '<div class="font-semibold mb-3">Métricas 3D</div>';
+    const tbl = document.createElement('div'); tbl.className='grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
+    Object.entries(data.lidar_metrics).forEach(([k,val])=>{ if(typeof val === 'object') return; tbl.innerHTML += `<div class="flex justify-between"><span class="text-gray-600">${k}</span><span class="font-medium">${Number.isFinite(val)? val: '—'}</span></div>`; });
+    lm.appendChild(tbl); v.appendChild(lm);
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorP.classList.add('hidden'); notice.classList.add('hidden');
+  out.textContent = '';
+  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
+  const fd = new FormData(form);
+  const fileIn = form.querySelector('input[name="file"]');
+  const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
+  try {
+    const res = await fetch('/api/evaluate', { method: 'POST', body: fd });
+    const txt = await res.text(); let data;
+    try { data = JSON.parse(txt); } catch { throw new Error(txt || 'Respuesta no-JSON'); }
+    if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
+    out.textContent = JSON.stringify(data, null, 2);
+    if(imgPreviewURL) renderViz(data, imgPreviewURL);
+  } catch (err) {
+    errorP.textContent = (err && err.message) ? err.message : String(err);
+    errorP.classList.remove('hidden');
+  } finally {
+    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
+  }
+});
 </script>
-
-</body>
-</html>
-
 </body>
 </html>
