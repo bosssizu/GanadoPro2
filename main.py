@@ -116,39 +116,49 @@ def adjust_from_lidar(category: str, m: dict) -> float:
 
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
     content = [
-        {"type":"text","text":prompt},
-        {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"},
+        {"type": "text", "text": prompt},
+        {"type": "input_image", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
     ]
-    use_responses = hasattr(client, "responses") and callable(getattr(client, "responses").create if hasattr(client, "responses") else None)
+    # Prefer Responses API if available
+    use_responses = hasattr(client, "responses") and callable(getattr(getattr(client, "responses"), "create", None))
     if use_responses:
         kwargs = {
             "model": "gpt-4o-mini",
-            "input": [{"role":"user","content": content}],
-            "temperature": 0
+            "input": [{"role": "user", "content": content}],
+            "temperature": 0,
         }
         if schema:
-            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
+            kwargs["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "schema", "schema": schema, "strict": True},
+            }
         else:
-            kwargs["response_format"] = {"type":"json_object"}
+            kwargs["response_format"] = {"type": "json_object"}
         resp = await client.responses.create(**kwargs)
-        out = resp.output_text
-        return json.loads(out)
-    else:
-        messages = [{
-            "role":"user",
-            "content":[
-                {"type":"text","text":prompt},
-                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"},
-            ]
-        }]
-        resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0,
-            response_format={"type":"json_object"}
-        )
-        txt = resp.choices[0].message.content
-        return json.loads(txt)
+        try:
+            out_text = resp.output_text
+        except Exception:
+            out_text = getattr(resp, "output", None) or ""
+            if not out_text and hasattr(resp, "choices"):
+                out_text = resp.choices[0].message.content
+        return json.loads(out_text)
+
+    # Fallback to Chat Completions
+    messages = [{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+        ]
+    }]
+    resp = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0,
+        response_format={"type": "json_object"},
+    )
+    txt = resp.choices[0].message.content
+    return json.loads(txt)
 
 @app.get("/")
 async def root_index():
