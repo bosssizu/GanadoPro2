@@ -9,7 +9,7 @@
 <body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
   <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
 
-  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data" method="post" action="/api/evaluate" enctype="multipart/form-data">
+  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data" method="post" action="https://web-production-4037a.up.railway.app/api/evaluate" enctype="multipart/form-data">
     <label class="block text-sm font-semibold">Categoría</label>
     <select name="category" required class="w-full border rounded-lg p-2">
       <option value="vaca flaca">Vaca flaca</option>
@@ -187,7 +187,7 @@ form.addEventListener('submit', async (e) => {
   const fileIn = form.querySelector('input[name="file"]');
   const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
   try {
-    const res = await fetch('/api/evaluate', { method: 'POST', body: fd });
+    const res = await fetch(form.action, { method: 'POST', body: fd });
     const txt = await res.text(); let data;
     try { data = JSON.parse(txt); } catch { throw new Error(txt || 'Respuesta no-JSON'); }
     if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');

@@ -4,6 +4,7 @@ import os, json, base64, hashlib, asyncio, math, typing
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from openai import AsyncOpenAI
 
 import prompts
@@ -11,6 +12,7 @@ import lidar
 
 app = FastAPI(title="GanadoBravo IA v4.1 Pro")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
 
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
