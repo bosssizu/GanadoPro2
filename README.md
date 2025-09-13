@@ -1,1 +1,1 @@
-GanadoBravo v4.2.1 (tabla + alias claves + prompt único)
+GanadoBravo v4.3 — pro mode UI + fallback prompts + claves canónicas.

@@ -15,19 +15,20 @@
     button{width:100%;padding:14px 16px;border:0;border-radius:999px;background:#16a34a;color:#fff;font-weight:800;font-size:20px;cursor:pointer}
     button[disabled]{opacity:.5;cursor:not-allowed}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     .mt{margin-top:16px}
     .hidden{display:none!important}
     .error{color:var(--err);margin-top:12px;font-weight:600}
     pre{background:#0b1020;color:#e5e7eb;padding:12px;border-radius:12px;overflow:auto;max-height:300px}
     .tag{display:inline-block;background:#eef2ff;color:#1e40af;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
-    .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .table{width:100%;border-collapse:collapse}
-    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:8px 6px;text-align:left}
     .muted{color:var(--muted)}
     #busyOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:saturate(130%) blur(2px)}
     #busyOverlay.show{display:flex}
     .spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:left}
+    .warn{background:#fff7ed;border:1px dashed #f59e0b;color:#7c2d12;padding:10px;border-radius:12px}
   </style>
 </head>
 <body>
@@ -49,6 +50,18 @@
             <label for="file">Imagen del animal</label>
             <input id="file" name="file" type="file" accept="image/*" capture="environment" required />
           </div>
+        </div>
+
+        <div class="mt">
+          <label><input type="checkbox" id="pro" /> Pro mode (LiDAR/Depth)</label>
+        </div>
+        <div id="proPanel" class="hidden mt">
+          <div id="proUnsupported" class="warn hidden">Tu teléfono no soporta escáner 3D.</div>
+          <div id="proControls" class="hidden">
+            <button type="button" id="scanBtn" style="margin-bottom:10px">Escanear ahora</button>
+            <div class="muted">Si no se abre, usa Polycam/Scaniverse y luego sube el archivo 3D por fuera (por ahora el análisis seguirá siendo 2D).</div>
+          </div>
+          <input type="hidden" name="pro" id="proHidden" value="0" />
         </div>
 
         <button id="submitBtn" type="submit" class="mt">
@@ -73,6 +86,15 @@
   </div></div>
 
 <script>
+function supports3D(){
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const webxr = 'xr' in navigator;
+  const motion = 'DeviceMotionEvent' in window || 'ondevicemotion' in window;
+  return (isIOS && motion) || (isAndroid && webxr);
+}
+
 function renderViz(data, imgURL){
   const root = document.getElementById('viz');
   root.classList.remove('hidden');
@@ -90,7 +112,7 @@ function renderViz(data, imgURL){
   head.appendChild(img); head.appendChild(title);
   root.appendChild(head);
 
-  const rubric = data.rubric || data.morphological_rubric || {};
+  const rubric = data.rubric || {};
   const notes = data.rubric_notes || {};
   const order = [
     "Condición corporal (BCS)","Conformación general","Línea dorsal","Angulación costillar","Profundidad de pecho",
@@ -103,7 +125,7 @@ function renderViz(data, imgURL){
   const tbody = document.createElement('tbody');
   order.forEach(k => {
     const tr = document.createElement('tr');
-    const val = rubric[k] ?? "";
+    const val = rubric[k] ?? 0;
     const note = notes[k] ?? "";
     tr.innerHTML = `<td>${k}</td><td>${val}</td><td class="muted">${note}</td>`;
     tbody.appendChild(tr);
@@ -131,6 +153,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const out = document.getElementById('out');
   const errorP = document.getElementById('error');
   const overlay = document.getElementById('busyOverlay');
+
+  const proChk = document.getElementById('pro');
+  const proPanel = document.getElementById('proPanel');
+  const proHidden = document.getElementById('proHidden');
+  const proUnsupported = document.getElementById('proUnsupported');
+  const proControls = document.getElementById('proControls');
+  const scanBtn = document.getElementById('scanBtn');
+
+  proChk.addEventListener('change', () => {
+    proPanel.classList.toggle('hidden', !proChk.checked);
+    const ok3d = supports3D();
+    proUnsupported.classList.toggle('hidden', ok3d);
+    proControls.classList.toggle('hidden', !ok3d);
+    proHidden.value = proChk.checked && ok3d ? "1" : "0";
+  });
+
+  if (scanBtn){
+    scanBtn.addEventListener('click', () => {
+      window.location.href = "polycam://";
+      setTimeout(()=>{
+        alert("Si no se abrió tu app de escaneo, instala Polycam/Scaniverse y vuelve a intentar. (Mientras tanto, puedes evaluar en 2D).");
+      }, 1200);
+    });
+  }
 
   form.addEventListener('submit', async function onSubmit(e){
     e.preventDefault();

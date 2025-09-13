@@ -40,6 +40,37 @@ Reglas:
 - Devuelve EXACTAMENTE las claves pedidas, sin extras.
 """
 
+# Fallbacks puntuales si faltan campos
+RUBRIC_ONLY_PROMPT_ES = """
+Devuelve SOLO el objeto "rubric" con 11 métricas NUMÉRICAS (0–10, pasos 0.5) exactamente con estos nombres:
+- Condición corporal (BCS)
+- Conformación general
+- Línea dorsal
+- Angulación costillar
+- Profundidad de pecho
+- Aplomos (patas)
+- Lomo
+- Grupo / muscling posterior
+- Balance anterior–posterior
+- Ancho torácico
+- Inserción de cola
+Responde como JSON con {"rubric":{...}} sin texto adicional.
+"""
+
+HEALTH_ONLY_PROMPT_ES = """
+Devuelve SOLO el objeto "health" con:
+- "flags": subset de ["lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis","diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"] segun evidencia visible (sino [])
+- "notes": comentario breve o "".
+Responde JSON {"health":{...}} sin texto extra.
+"""
+
+BREED_ONLY_PROMPT_ES = """
+Devuelve SOLO el objeto "breed" con:
+- "guess": raza estimada (p.ej. "Brahman", "Nelore", "Gyr", "Holstein", "Angus", "Mestizo", "Indeterminado" si no es posible)
+- "confidence": número 0–1
+Responde JSON {"breed":{...}} sin texto extra.
+"""
+
 EVALUATION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -74,8 +105,8 @@ EVALUATION_SCHEMA = {
                 "Grupo / muscling posterior",
                 "Balance anterior–posterior",
                 "Ancho torácico",
-                "Inserción de cola"
-            ]
+                "Inserción de cola",
+            ],
         },
         "rubric_notes": {
             "type": "object",
@@ -91,19 +122,22 @@ EVALUATION_SCHEMA = {
                 "Grupo / muscling posterior": {"type": "string"},
                 "Balance anterior–posterior": {"type": "string"},
                 "Ancho torácico": {"type": "string"},
-                "Inserción de cola": {"type": "string"}
-            }
+                "Inserción de cola": {"type": "string"},
+            },
         },
         "decision": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
                 "global_score": {"type": "number"},
-                "decision_level": {"type": "string", "enum": ["CONSIDERAR_ALTO", "CONSIDERAR_BAJO", "DESCARTAR"]},
+                "decision_level": {
+                    "type": "string",
+                    "enum": ["CONSIDERAR_ALTO", "CONSIDERAR_BAJO", "DESCARTAR"],
+                },
                 "decision_text": {"type": "string"},
-                "rationale": {"type": "string"}
+                "rationale": {"type": "string"},
             },
-            "required": ["global_score", "decision_level", "decision_text", "rationale"]
+            "required": ["global_score", "decision_level", "decision_text", "rationale"],
         },
         "health": {
             "type": "object",
@@ -111,25 +145,35 @@ EVALUATION_SCHEMA = {
             "properties": {
                 "flags": {
                     "type": "array",
-                    "items": {"type": "string", "enum": [
-                        "lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis",
-                        "diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"
-                    ]}
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "lesion_cutanea",
+                            "claudicacion",
+                            "secrecion_nasal",
+                            "conjuntivitis",
+                            "diarrea",
+                            "dermatitis",
+                            "lesion_de_pezuna",
+                            "parasitos_externos",
+                            "tos",
+                        ],
+                    },
                 },
-                "notes": {"type": "string"}
+                "notes": {"type": "string"},
             },
-            "required": ["flags", "notes"]
+            "required": ["flags", "notes"],
         },
         "breed": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
                 "guess": {"type": "string"},
-                "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
             },
-            "required": ["guess", "confidence"]
+            "required": ["guess", "confidence"],
         },
-        "lidar_metrics": {"type": ["object", "null"]}
+        "lidar_metrics": {"type": ["object", "null"]},
     },
-    "required": ["engine", "mode", "category", "rubric", "decision", "health", "breed"]
+    "required": ["engine", "mode", "category", "rubric", "decision", "health", "breed"],
 }
