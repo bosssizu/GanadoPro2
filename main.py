@@ -117,7 +117,7 @@ def adjust_from_lidar(category: str, m: dict) -> float:
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
     content = [
         {"type":"text","text":prompt},
-        {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
+        {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"},
     ]
     use_responses = hasattr(client, "responses") and callable(getattr(client, "responses").create if hasattr(client, "responses") else None)
     if use_responses:
@@ -127,7 +127,7 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
             "temperature": 0
         }
         if schema:
-            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
+            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}
         else:
             kwargs["response_format"] = {"type":"json_object"}
         resp = await client.responses.create(**kwargs)
@@ -138,7 +138,7 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
             "role":"user",
             "content":[
                 {"type":"text","text":prompt},
-                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
+                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"},
             ]
         }]
         resp = await client.chat.completions.create(
@@ -232,20 +232,20 @@ async def evaluate(
             if not rationale:
                 rationale = "Ajustado automáticamente desde 'global_score' por pesos/offsets."
 
-        return {{
+        return {
             "engine": "gpt-4o-mini",
             "mode": ("pro" if lidar_metrics else "standard"),
             "category": category,
             "rubric": rubric,
-            "decision": {{
+            "decision": {
                 "global_score": global_score,
                 "decision_level": decision_level,
                 "decision_text": decision_text,
                 "rationale": rationale
-            }},
+            },
             "health": hb["health"],
             "breed": hb["breed"],
             "lidar_metrics": lidar_metrics
-        }}
+        }
     except Exception as e:
-        return {{"error": str(e)}}
+        return {"error": str(e)}
