@@ -75,7 +75,7 @@ window.__gb_booted__ = true;
 const btn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
 const spinner = document.getElementById('spinner');
-const out = document.getElementById('out');
+const out = document.getElementById('out');\nconst uploadFrame = document.querySelector('iframe[name="uploadTarget"]');
 const errorP = document.getElementById('error');
 const proToggle = document.getElementById('proToggle');
 const proFields = document.getElementById('proFields');
@@ -194,7 +194,7 @@ function renderViz(data,imgURL){
   }
 }
 
-form.addEventListener('submit', async (e) => {
+form.addEventListener('submit', async (e) => {\n  // Fallback overlay even if fetch fails later\n  try {\n    // Fallback: if the browser posts into the hidden iframe (e.g., JS blocked), parse its response when it loads\n    try {\n      uploadFrame?.addEventListener('load', ()=>{\n        try {\n          const doc = uploadFrame.contentDocument || uploadFrame.contentWindow?.document;\n          const txt = doc && doc.body ? (doc.body.innerText || doc.body.textContent) : '';\n          if (txt) {\n            try { processApiResponseText(txt, null); document.getElementById('busyOverlay').classList.add('hidden'); } catch(err) { errorP.textContent = err.message; errorP.classList.remove('hidden'); }\n          }\n        } catch(_){}\n      }, { once: true });\n    } catch(_){} document.getElementById('busyOverlay').classList.remove('hidden'); } catch(_) {}
   e.preventDefault();
   errorP.classList.add('hidden'); notice.classList.add('hidden');
   out.textContent = '';
@@ -202,10 +202,10 @@ form.addEventListener('submit', async (e) => {
   const fd = new FormData(form);
   const fileIn = form.querySelector('input[name="file"]');
   const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
-  try {
+  try {\n    // Fallback: if the browser posts into the hidden iframe (e.g., JS blocked), parse its response when it loads\n    try {\n      uploadFrame?.addEventListener('load', ()=>{\n        try {\n          const doc = uploadFrame.contentDocument || uploadFrame.contentWindow?.document;\n          const txt = doc && doc.body ? (doc.body.innerText || doc.body.textContent) : '';\n          if (txt) {\n            try { processApiResponseText(txt, null); document.getElementById('busyOverlay').classList.add('hidden'); } catch(err) { errorP.textContent = err.message; errorP.classList.remove('hidden'); }\n          }\n        } catch(_){}\n      }, { once: true });\n    } catch(_){}
     const res = await fetch(form.action, { method: 'POST', body: fd });
     const txt = await res.text(); let data = null;
-    try { data = JSON.parse(txt); } catch(_) {}
+    try {\n    // Fallback: if the browser posts into the hidden iframe (e.g., JS blocked), parse its response when it loads\n    try {\n      uploadFrame?.addEventListener('load', ()=>{\n        try {\n          const doc = uploadFrame.contentDocument || uploadFrame.contentWindow?.document;\n          const txt = doc && doc.body ? (doc.body.innerText || doc.body.textContent) : '';\n          if (txt) {\n            try { processApiResponseText(txt, null); document.getElementById('busyOverlay').classList.add('hidden'); } catch(err) { errorP.textContent = err.message; errorP.classList.remove('hidden'); }\n          }\n        } catch(_){}\n      }, { once: true });\n    } catch(_){} data = JSON.parse(txt); } catch(_) {}
     if (!res.ok) {
       if (data && (data.error || data.detail)) throw new Error((data.error||'error') + (data.detail? ': '+data.detail:''));
       throw new Error(txt || ('HTTP '+res.status));
@@ -216,18 +216,20 @@ form.addEventListener('submit', async (e) => {
     if(imgPreviewURL) renderViz(data, imgPreviewURL);
   } catch (err) {
     errorP.textContent = (err && err.message) ? err.message : String(err);
+    try { document.getElementById('busyOverlay').classList.add('hidden'); } catch(_) {}
     errorP.classList.remove('hidden');
   } finally {
     btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar'; document.getElementById('busyOverlay').classList.add('hidden');
   }
 });
     const txt = await res.text(); let data;
-    try { data = JSON.parse(txt); } catch { throw new Error(txt || 'Respuesta no-JSON'); }
+    try {\n    // Fallback: if the browser posts into the hidden iframe (e.g., JS blocked), parse its response when it loads\n    try {\n      uploadFrame?.addEventListener('load', ()=>{\n        try {\n          const doc = uploadFrame.contentDocument || uploadFrame.contentWindow?.document;\n          const txt = doc && doc.body ? (doc.body.innerText || doc.body.textContent) : '';\n          if (txt) {\n            try { processApiResponseText(txt, null); document.getElementById('busyOverlay').classList.add('hidden'); } catch(err) { errorP.textContent = err.message; errorP.classList.remove('hidden'); }\n          }\n        } catch(_){}\n      }, { once: true });\n    } catch(_){} data = JSON.parse(txt); } catch { throw new Error(txt || 'Respuesta no-JSON'); }
     if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
     out.textContent = JSON.stringify(data, null, 2);
     if(imgPreviewURL) renderViz(data, imgPreviewURL);
   } catch (err) {
     errorP.textContent = (err && err.message) ? err.message : String(err);
+    try { document.getElementById('busyOverlay').classList.add('hidden'); } catch(_) {}
     errorP.classList.remove('hidden');
   } finally {
     btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar'; document.getElementById('busyOverlay').classList.add('hidden');
