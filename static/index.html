@@ -115,6 +115,21 @@ document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
   </details>
 
 <script>
+const RUBRIC_ORDER = [
+  "Condición corporal (BCS)",
+  "Conformación general",
+  "Línea dorsal",
+  "Angulación costillar",
+  "Profundidad de pecho",
+  "Aplomos (patas)",
+  "Lomo",
+  "Grupo / muscling posterior",
+  "Balance anterior-posterior",
+  "Ancho torácico",
+  "Inserción de cola"
+];
+
+
 const form = document.getElementById('uploadForm');
 const btn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
@@ -196,9 +211,7 @@ function renderViz(data,imgURL){
   met.innerHTML = '<div class="font-semibold mb-3">Métricas morfológicas</div>';
   const grid = document.createElement('div');
   grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
-  Object.entries(data.rubric||{}).forEach(([k,val])=>{
-    grid.innerHTML += metricBar(k,Number(val)||0);
-  });
+  RUBRIC_ORDER.forEach((k)=>{ const val = Number(data.rubric?.[k] ?? 0); grid.innerHTML += metricBar(k, val); });
   met.appendChild(grid);
   v.appendChild(met);
 

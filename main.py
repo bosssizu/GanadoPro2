@@ -32,26 +32,28 @@ def sha1(b: bytes) -> str:
 
 CATEGORY_WEIGHTS = {
     "levante": {
-        "Lomo": 0.14, "Aplomos (patas)": 0.14, "Línea dorsal": 0.12,
-        "Grupo / muscling posterior": 0.12, "Conformación general": 0.10,
-        "Angulación costillar": 0.08, "Ancho torácico": 0.08,
+        "Lomo": 0.13, "Aplomos (patas)": 0.13, "Línea dorsal": 0.11,
+        "Grupo / muscling posterior": 0.11, "Conformación general": 0.09,
+        "Angulación costillar": 0.07, "Ancho torácico": 0.08,
         "Profundidad de pecho": 0.06, "Condición corporal (BCS)": 0.08,
-        "Inserción de cola": 0.08
+        "Inserción de cola": 0.08, "Balance anterior-posterior": 0.06
     },
     "engorde": {
-        "Grupo / muscling posterior": 0.18, "Profundidad de pecho": 0.14,
-        "Ancho torácico": 0.12, "Conformación general": 0.10,
-        "Condición corporal (BCS)": 0.10, "Lomo": 0.10,
+        "Grupo / muscling posterior": 0.17, "Profundidad de pecho": 0.13,
+        "Ancho torácico": 0.11, "Conformación general": 0.09,
+        "Condición corporal (BCS)": 0.09, "Lomo": 0.09,
         "Línea dorsal": 0.08, "Aplomos (patas)": 0.08,
-        "Angulación costillar": 0.06, "Inserción de cola": 0.04
+        "Angulación costillar": 0.06, "Inserción de cola": 0.04,
+        "Balance anterior-posterior": 0.06
     },
     "vaca flaca": {
-        "Lomo": 0.14, "Aplomos (patas)": 0.12, "Línea dorsal": 0.12,
+        "Lomo": 0.13, "Aplomos (patas)": 0.11, "Línea dorsal": 0.11,
         "Profundidad de pecho": 0.10, "Ancho torácico": 0.10,
-        "Conformación general": 0.10, "Condición corporal (BCS)": 0.10,
-        "Grupo / muscling posterior": 0.10, "Angulación costillar": 0.08,
-        "Inserción de cola": 0.04
+        "Conformación general": 0.09, "Condición corporal (BCS)": 0.09,
+        "Grupo / muscling posterior": 0.09, "Angulación costillar": 0.08,
+        "Inserción de cola": 0.04, "Balance anterior-posterior": 0.06
     }
+}
 }
 CATEGORY_OFFSETS = {"levante": 0.4, "vaca flaca": 0.8, "engorde": -0.3}
 
@@ -175,8 +177,8 @@ async def evaluate(
         # 2) Salud y Raza (cache por imagen)
         hb = HEALTH_BREED_CACHE.get(key)
         if not hb:
-            health_task = asyncio.create_task(run_prompt(prompts.PROMPT_4, b64, None))
-            breed_task = asyncio.create_task(run_prompt(prompts.PROMPT_5, b64, None))
+            health_task = asyncio.create_task(run_prompt(prompts.PROMPT_4, b64, prompts.HEALTH_SCHEMA))
+            breed_task = asyncio.create_task(run_prompt(prompts.PROMPT_5, b64, prompts.BREED_SCHEMA))
             res4, res5 = await asyncio.gather(health_task, breed_task)
             hb = {"health": res4.get("health", {}), "breed": res5.get("breed", {})}
             HEALTH_BREED_CACHE[key] = hb
