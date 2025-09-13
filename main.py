@@ -12,6 +12,14 @@ import lidar
 
 app = FastAPI(title="GanadoBravo IA v4.1 Pro")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.exception_handler(Exception)
+async def _all_errors(request, exc):
+    try:
+        detail = str(exc)
+    except Exception:
+        detail = "unknown"
+    return JSONResponse({"error": "server_error", "detail": detail}, status_code=200)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
 
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -156,6 +164,8 @@ async def evaluate(
 ):
     try:
         category = category.strip().lower()
+        if not os.getenv('OPENAI_API_KEY'):
+            return {"error":"OPENAI_API_KEY no configurada en el servidor"}
         if category not in CATEGORY_WEIGHTS:
             return JSONResponse({"error":"Categoría inválida"}, status_code=400)
 
