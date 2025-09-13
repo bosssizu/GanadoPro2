@@ -22,7 +22,7 @@
 
     <label class="flex items-center gap-2 mt-2">
       <input type="checkbox" id="proToggle" class="h-4 w-4">
-      <span class="text-sm font-semibold">Pro mode (LiDAR) — Escanear</span>
+      <span class="text-sm font-semibold">Pro mode (LiDAR/Depth) — Escanear</span>
     </label>
     <input type="hidden" name="pro" id="proHidden" value="">
 
@@ -107,7 +107,7 @@ function renderViz(data,imgURL){
 
   const [label,cls] = badgeText(data.decision?.decision_level||''); 
   const score = data.decision?.global_score||0;
-  const mode = data.mode==='pro' ? chip('Pro (LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
+  const mode = data.mode==='pro' ? chip('Pro (Depth/LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
   const head = document.createElement('div');
   head.className = 'bg-white rounded-2xl shadow p-4 flex items-center gap-4';
   head.innerHTML = `
@@ -156,7 +156,7 @@ function renderViz(data,imgURL){
   if(data.lidar_metrics && !data.lidar_metrics.error){
     const lm = document.createElement('div');
     lm.className = 'bg-white rounded-2xl shadow p-4';
-    lm.innerHTML = '<div class="font-semibold mb-3">Métricas LiDAR</div>';
+    lm.innerHTML = '<div class="font-semibold mb-3">Métricas 3D</div>';
     const tbl = document.createElement('div');
     tbl.className = 'grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
     Object.entries(data.lidar_metrics).forEach(([k,val])=>{

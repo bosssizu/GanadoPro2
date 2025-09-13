@@ -11,10 +11,10 @@ import lidar
 
 ALLOWED_DECISIONS = {"NO_COMPRAR","CONSIDERAR_BAJO","CONSIDERAR_ALTO","COMPRAR"}
 
-app = FastAPI(title="GanadoBravo IA v4.1")
+app = FastAPI(title="GanadoBravo IA v4.1 Pro")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-client = AsyncOpenAI()
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Caches en memoria
 RUBRIC_CACHE: dict[str, dict] = {}
@@ -73,7 +73,6 @@ def fallback_decision_from_score(gs: float):
     return "NO_COMPRAR", "Debilidades relevantes para el objetivo actual."
 
 def adjust_from_lidar(category: str, m: dict) -> float:
-    """Delta determinista por categoría en base a métricas 3D."""
     delta = 0.0
     try:
         girth = float(m.get("heart_girth_m", float('nan')))
@@ -97,12 +96,10 @@ def adjust_from_lidar(category: str, m: dict) -> float:
     return _norm_half_steps(delta)
 
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
-    """Usa Responses API si existe; si no, fallback a Chat Completions con visión."""
     content = [
         {"type":"text","text":prompt},
         {"type":"input_image","image_url":{"url":f"data:image/jpeg;base64,{image_b64}"}},
     ]
-    # ¿Responses disponible?
     use_responses = hasattr(client, "responses") and callable(getattr(client, "responses").create if hasattr(client, "responses") else None)
     if use_responses:
         kwargs = {
@@ -118,7 +115,6 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
         out = resp.output_text
         return json.loads(out)
     else:
-        # Fallback a Chat Completions (visión)
         messages = [{
             "role":"user",
             "content":[
