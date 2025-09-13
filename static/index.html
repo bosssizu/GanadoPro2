@@ -4,7 +4,69 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GanadoBravo IA</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com">
+// deep-link helpers
+function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+function isAndroid(){ return /Android/.test(navigator.userAgent); }
+
+function openScanner(category){
+  const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
+  const params = `?category=${encodeURIComponent(category)}&return=${returnUrl}`;
+
+  let opened = false;
+  const t = Date.now();
+
+  if (isIOS()){
+    // Try custom URL scheme (requires iOS app registering ganadobravo://)
+    const url = "ganadobravo://scan" + params;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    opened = true;
+    // Fallback to App Store/Instruction after timeout
+    setTimeout(()=>{
+      if (Date.now()-t < 1800){
+        alert("Si no se abrió la app, instala o abre GanadoBravo Scan en tu iPhone. También puedes usar Polycam/Scaniverse y subir el archivo 3D.");
+      }
+      document.body.removeChild(iframe);
+    }, 1500);
+  } else if (isAndroid()){
+    // Android intent to open the app if installed
+    const pkg = "com.ganadobravo.scanner";
+    const intent = `intent://scan${params}#Intent;scheme=ganadobravo;package=${pkg};end`;
+    window.location.href = intent;
+    opened = true;
+    setTimeout(()=>{
+      if (Date.now()-t < 1800){
+        alert("Si no se abrió la app, instálala desde Play Store o usa fotogrametría externa y sube el archivo 3D.");
+      }
+    }, 1500);
+  } else {
+    alert("Para escanear en 3D, usa la app móvil (iOS/Android) o sube un archivo 3D exportado (OBJ/PLY/GLB).");
+  }
+  return opened;
+}
+
+proToggle.addEventListener('change', () => {
+  proFields.classList.toggle('hidden', !proToggle.checked);
+  proHidden.value = proToggle.checked ? '1' : '';
+  if (proToggle.checked){
+    // try to open scanner immediately (uses the toggle click as a user gesture)
+    const category = document.querySelector('select[name="category"]').value;
+    openScanner(category);
+  }
+});
+
+document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
+  const category = document.querySelector('select[name="category"]').value;
+  openScanner(category);
+});
+</script>
+
+</body>
+</html>
+
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
   <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
@@ -26,7 +88,7 @@
     </label>
     <input type="hidden" name="pro" id="proHidden" value="">
 
-    <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">
+    <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">\n  <button type="button" id="scanNowBtn" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700">Escanear ahora</button>\n  <div class="text-xs text-gray-600">¿No tienes la app o no se abre? Usa una app externa (Polycam, Scaniverse) y luego <span class="underline">sube el archivo 3D</span> abajo.</div>
       <label class="block text-sm font-semibold">Escanear (por ahora, sube el archivo OBJ/PLY/GLB/USDZ)</label>
       <input type="file" name="mesh_file" accept=".obj,.ply,.glb,.gltf,.usd,.usdz" class="block w-full text-sm border rounded-lg p-2 bg-white">
       <label class="block text-xs text-gray-600">Meta JSON (opcional)</label>
@@ -194,6 +256,68 @@ form.addEventListener('submit', async (e) => {
     btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
   }
 });
+
+// deep-link helpers
+function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+function isAndroid(){ return /Android/.test(navigator.userAgent); }
+
+function openScanner(category){
+  const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
+  const params = `?category=${encodeURIComponent(category)}&return=${returnUrl}`;
+
+  let opened = false;
+  const t = Date.now();
+
+  if (isIOS()){
+    // Try custom URL scheme (requires iOS app registering ganadobravo://)
+    const url = "ganadobravo://scan" + params;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    opened = true;
+    // Fallback to App Store/Instruction after timeout
+    setTimeout(()=>{
+      if (Date.now()-t < 1800){
+        alert("Si no se abrió la app, instala o abre GanadoBravo Scan en tu iPhone. También puedes usar Polycam/Scaniverse y subir el archivo 3D.");
+      }
+      document.body.removeChild(iframe);
+    }, 1500);
+  } else if (isAndroid()){
+    // Android intent to open the app if installed
+    const pkg = "com.ganadobravo.scanner";
+    const intent = `intent://scan${params}#Intent;scheme=ganadobravo;package=${pkg};end`;
+    window.location.href = intent;
+    opened = true;
+    setTimeout(()=>{
+      if (Date.now()-t < 1800){
+        alert("Si no se abrió la app, instálala desde Play Store o usa fotogrametría externa y sube el archivo 3D.");
+      }
+    }, 1500);
+  } else {
+    alert("Para escanear en 3D, usa la app móvil (iOS/Android) o sube un archivo 3D exportado (OBJ/PLY/GLB).");
+  }
+  return opened;
+}
+
+proToggle.addEventListener('change', () => {
+  proFields.classList.toggle('hidden', !proToggle.checked);
+  proHidden.value = proToggle.checked ? '1' : '';
+  if (proToggle.checked){
+    // try to open scanner immediately (uses the toggle click as a user gesture)
+    const category = document.querySelector('select[name="category"]').value;
+    openScanner(category);
+  }
+});
+
+document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
+  const category = document.querySelector('select[name="category"]').value;
+  openScanner(category);
+});
 </script>
+
+</body>
+</html>
+
 </body>
 </html>
