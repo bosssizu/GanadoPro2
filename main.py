@@ -127,7 +127,7 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
             "temperature": 0
         }
         if schema:
-            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}
+            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"schema","schema":schema,"strict":True}}
         else:
             kwargs["response_format"] = {"type":"json_object"}
         resp = await client.responses.create(**kwargs)
