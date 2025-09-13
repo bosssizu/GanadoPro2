@@ -1,1 +1,1 @@
-GanadoBravo v4.3 — pro mode UI + fallback prompts + claves canónicas.
+GanadoBravo v4.3.1 — color scale + gauge + health grid + Pro mode UI. Deploy: Railway + envs.

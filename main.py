@@ -1,4 +1,4 @@
-import os, base64, json, unicodedata
+import os, base64, json, unicodedata, statistics
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, UploadFile
@@ -13,12 +13,12 @@ from prompts import (
 )
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")  # opcional
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
 MODEL = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL) if OPENAI_BASE_URL else AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-app = FastAPI(title="GanadoBravo IA v4.3")
+app = FastAPI(title="GanadoBravo IA v4.3.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -54,21 +54,17 @@ CANON = {
     _norm("Ancho torácico"): "Ancho torácico",
     _norm("Inserción de cola"): "Inserción de cola",
 }
-
 ORDER = list(CANON.values())
 
 def canonicalize_rubric(rub: dict | None) -> dict:
     out = {}
-    if not isinstance(rub, dict): 
+    if not isinstance(rub, dict):
         return out
     for k, v in rub.items():
         key = CANON.get(_norm(str(k)))
-        if not key:
-            continue
-        try:
-            out[key] = float(_round05(float(v)))
-        except Exception:
-            out[key] = 0.0
+        if not key: continue
+        try: out[key] = float(_round05(float(v)))
+        except: out[key] = 0.0
     return out
 
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
@@ -79,17 +75,13 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
     use_responses = hasattr(client, "responses") and callable(getattr(getattr(client, "responses"), "create", None))
     if use_responses:
         kwargs = {"model": MODEL, "input": [{"role": "user", "content": content}], "temperature": 0}
-        if schema:
-            kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"gb_schema","schema":schema,"strict":True}}
-        else:
-            kwargs["response_format"] = {"type":"json_object"}
+        kwargs["response_format"] = {"type":"json_schema","json_schema":{"name":"gb_schema","schema":(schema or {"type":"object"}),"strict":True}}
         resp = await client.responses.create(**kwargs)
         out_text = getattr(resp, "output_text", None) or getattr(resp, "output", None)
         if not out_text and hasattr(resp, "choices"):
             out_text = resp.choices[0].message.content
         return json.loads(out_text)
 
-    # Fallback a chat.completions
     messages = [{
         "role": "user",
         "content": [
@@ -104,16 +96,10 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
     return json.loads(txt)
 
 async def ensure_rubric(image_b64: str, data: dict) -> dict:
-    rub = data.get("rubric") or data.get("morphological_rubric")
-    rub = canonicalize_rubric(rub)
-    if len(rub) >= 9:  # aceptamos si llegó casi completo
-        return rub
-    # pedir solo rubric
-    r = await run_prompt(RUBRIC_ONLY_PROMPT_ES, image_b64, None)
-    rub2 = canonicalize_rubric(r.get("rubric"))
-    # merge preferente a rub2
-    rub.update(rub2)
-    # rellenar faltantes con 0 para no dejar celdas vacías
+    rub = canonicalize_rubric(data.get("rubric") or data.get("morphological_rubric"))
+    if len(rub) < 11:
+        r = await run_prompt(RUBRIC_ONLY_PROMPT_ES, image_b64, None)
+        rub.update(canonicalize_rubric(r.get("rubric")))
     for key in ORDER:
         rub.setdefault(key, 0.0)
     return rub
@@ -128,7 +114,7 @@ async def ensure_health(image_b64: str, data: dict) -> dict:
 
 async def ensure_breed(image_b64: str, data: dict) -> dict:
     b = data.get("breed") or {}
-    if isinstance(b, dict) and b.get("guess"):
+    if isinstance(b, dict) and b.get("guess") is not None:
         return {"guess": b.get("guess") or "Indeterminado", "confidence": float(b.get("confidence") or 0.0)}
     r = await run_prompt(BREED_ONLY_PROMPT_ES, image_b64, None)
     b2 = r.get("breed") or {}
@@ -149,29 +135,32 @@ async def evaluate(
     img_bytes = await file.read()
     image_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
-    # 1) Llamado principal
     data = await run_prompt(EVALUATION_PROMPT_ES.strip(), image_b64, EVALUATION_SCHEMA)
 
-    # 2) Normalizaciones + fallbacks garantizados
     rubric = await ensure_rubric(image_b64, data)
     health = await ensure_health(image_b64, data)
     breed  = await ensure_breed(image_b64, data)
 
-    # Top-level
-    out = {
+    decision = data.get("decision") or {}
+    gs = decision.get("global_score")
+    if gs is None:
+        try:
+            gs = statistics.mean([v for v in rubric.values()])
+        except:
+            gs = 0.0
+    decision.setdefault("global_score", round(gs, 1))
+    decision.setdefault("decision_level", "CONSIDERAR_BAJO")
+    decision.setdefault("decision_text", "")
+    decision.setdefault("rationale", "")
+
+    return {
         "engine": MODEL,
         "mode": mode,
         "category": category.strip().lower(),
         "rubric": rubric,
         "rubric_notes": data.get("rubric_notes") or {},
-        "decision": data.get("decision") or {
-            "global_score": 0.0,
-            "decision_level": "CONSIDERAR_BAJO",
-            "decision_text": "",
-            "rationale": ""
-        },
+        "decision": decision,
         "health": health,
         "breed": breed,
         "lidar_metrics": None,
     }
-    return out
