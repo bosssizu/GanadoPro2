@@ -1,73 +1,130 @@
-# -*- coding: utf-8 -*-
 
-RUBRIC_METRICS = ['Condición corporal (BCS)', 'Conformación general', 'Línea dorsal', 'Angulación costillar', 'Profundidad de pecho', 'Aplomos (patas)', 'Lomo', 'Grupo / muscling posterior', 'Balance anterior-posterior', 'Ancho torácico', 'Inserción de cola']
+# prompts.py
+EVALUATION_PROMPT_ES = """
+Eres un evaluador técnico de ganado de carne/leche. Analiza UNA sola imagen del animal.
+Responde SOLO en JSON válido según el schema. Usa valores estables (determinista; NO inventes).
 
-RUBRIC_SCHEMA = {
-  "type": "object",
-  "properties": {
-    "rubric": {
-      "type": "object",
-      "properties": {'Condición corporal (BCS)': {"type": "number"}, 'Conformación general': {"type": "number"}, 'Línea dorsal': {"type": "number"}, 'Angulación costillar': {"type": "number"}, 'Profundidad de pecho': {"type": "number"}, 'Aplomos (patas)': {"type": "number"}, 'Lomo': {"type": "number"}, 'Grupo / muscling posterior': {"type": "number"}, 'Balance anterior-posterior': {"type": "number"}, 'Ancho torácico': {"type": "number"}, 'Inserción de cola': {"type": "number"}},
-      "required": ['Condición corporal (BCS)', 'Conformación general', 'Línea dorsal', 'Angulación costillar', 'Profundidad de pecho', 'Aplomos (patas)', 'Lomo', 'Grupo / muscling posterior', 'Balance anterior-posterior', 'Ancho torácico', 'Inserción de cola']
-    }
-  },
-  "required": ["rubric"],
-  "additionalProperties": False
+1) Rubrica morfológica (0–10, pasos de 0.5):
+- "Condición corporal (BCS)"
+- "Conformación general"
+- "Línea dorsal"
+- "Angulación costillar"
+- "Profundidad de pecho"
+- "Aplomos (patas)"
+- "Lomo"
+- "Grupo / muscling posterior"
+- "Balance anterior–posterior"
+- "Ancho torácico"
+- "Inserción de cola"
+
+2) Decisión por categoría (levante / vaca_flaca / engorde), con racional:
+- "decision_level" ∈ { "CONSIDERAR_ALTO", "CONSIDERAR_BAJO", "DESCARTAR" }
+- "global_score" 0–10
+- "decision_text" breve
+- "rationale" breve
+
+3) Salud — marca SOLO de esta lista si hay evidencias en la imagen (sino, []):
+   ["lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis",
+    "diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"]
+   Devuelve "flags": [] si no hay evidencias. Puedes añadir "notes" breve (o "")
+
+4) Raza (estimada):
+- "guess": nombre común (p.ej. "Brahman", "Nelore", "Gyr", "Girolando", "Holstein",
+  "Jersey", "Angus", "Simmental", "Cebú", "Mestizo", etc.). Si no es inferible, usa "Indeterminado".
+- "confidence": 0–1
+
+Reglas:
+- No inventes: si algo no se ve, no lo marques.
+- Mantén coherencia: métricas medias ~5–7 si la imagen es aceptable, extremos solo si hay evidencia clara.
+- Devuelve EXACTAMENTE las claves pedidas, sin extras.
+"""
+
+EVALUATION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "engine": {"type": "string"},
+        "mode": {"type": "string"},
+        "category": {"type": "string"},
+        "rubric": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "Condición corporal (BCS)": {"type": "number"},
+                "Conformación general": {"type": "number"},
+                "Línea dorsal": {"type": "number"},
+                "Angulación costillar": {"type": "number"},
+                "Profundidad de pecho": {"type": "number"},
+                "Aplomos (patas)": {"type": "number"},
+                "Lomo": {"type": "number"},
+                "Grupo / muscling posterior": {"type": "number"},
+                "Balance anterior–posterior": {"type": "number"},
+                "Ancho torácico": {"type": "number"},
+                "Inserción de cola": {"type": "number"},
+            },
+            "required": [
+                "Condición corporal (BCS)",
+                "Conformación general",
+                "Línea dorsal",
+                "Angulación costillar",
+                "Profundidad de pecho",
+                "Aplomos (patas)",
+                "Lomo",
+                "Grupo / muscling posterior",
+                "Balance anterior–posterior",
+                "Ancho torácico",
+                "Inserción de cola",
+            ],
+        },
+        "decision": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "global_score": {"type": "number"},
+                "decision_level": {
+                    "type": "string",
+                    "enum": ["CONSIDERAR_ALTO", "CONSIDERAR_BAJO", "DESCARTAR"],
+                },
+                "decision_text": {"type": "string"},
+                "rationale": {"type": "string"},
+            },
+            "required": ["global_score", "decision_level", "decision_text", "rationale"],
+        },
+        "health": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "flags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "lesion_cutanea",
+                            "claudicacion",
+                            "secrecion_nasal",
+                            "conjuntivitis",
+                            "diarrea",
+                            "dermatitis",
+                            "lesion_de_pezuna",
+                            "parasitos_externos",
+                            "tos",
+                        ],
+                    },
+                },
+                "notes": {"type": "string"},
+            },
+            "required": ["flags", "notes"],
+        },
+        "breed": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "guess": {"type": "string"},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            },
+            "required": ["guess", "confidence"],
+        },
+        "lidar_metrics": {"type": ["object", "null"]},
+    },
+    "required": ["engine", "mode", "category", "rubric", "decision", "health", "breed"],
 }
-
-HEALTH_SCHEMA = {
-  "type": "object",
-  "properties": {
-    "health": {
-      "type": "object",
-      "properties": {
-        "flags": {"type": "array", "items": {"type": "string"}},
-        "notes": {"type": "string"}
-      },
-      "required": ["flags", "notes"]
-    }
-  },
-  "required": ["health"],
-  "additionalProperties": False
-}
-
-BREED_SCHEMA = {
-  "type": "object",
-  "properties": {
-    "breed": {
-      "type": "object",
-      "properties": {
-        "guess": {"type": "string"},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
-      },
-      "required": ["guess", "confidence"]
-    }
-  },
-  "required": ["breed"],
-  "additionalProperties": False
-}
-
-PROMPT_1 = (
-  "Evalúa morfología de un bovino en 11 métricas de 0.0 a 10.0 (pasos de 0.5). "
-  "Usa EXCLUSIVAMENTE estas claves y devuélvelas en JSON bajo 'rubric': "
-  "Condición corporal (BCS), Conformación general, Línea dorsal, Angulación costillar, Profundidad de pecho, Aplomos (patas), Lomo, Grupo / muscling posterior, Balance anterior-posterior, Ancho torácico, Inserción de cola. "
-  "Sé consistente y conservador. No agregues texto fuera del JSON."
-)
-
-PROMPT_3 = (
-  "Con base en la rúbrica (0–10 por métrica) y la categoría '{category}', "
-  "devuelve JSON con: global_score (0–10), decision_level "
-  "(NO_COMPRAR | CONSIDERAR_BAJO | CONSIDERAR_ALTO | COMPRAR), "
-  "decision_text (breve) y rationale. Considera 'Rubric JSON' y, si existe, 'LIDAR JSON'."
-)
-
-PROMPT_4 = (
-  "Detecta banderas de salud visibles (cojeras, lesiones, secreciones, problemas respiratorios, costillas marcadas, "
-  "parásitos, heridas, inflamaciones, pelaje irregular, etc.). "
-  "Devuelve estrictamente el JSON con la forma del esquema HEALTH_SCHEMA."
-)
-
-PROMPT_5 = (
-  "Estima la raza o mestizaje más probable visible y la confianza 0..1 (float). "
-  "Devuelve estrictamente el JSON con la forma del esquema BREED_SCHEMA."
-)

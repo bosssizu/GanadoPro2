@@ -27,6 +27,7 @@
     #busyOverlay.show{display:flex}
     .spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    .warn{background:#fff7ed;border:1px dashed #f59e0b;color:#7c2d12;padding:10px;border-radius:12px}
   </style>
 </head>
 <body>
@@ -34,7 +35,7 @@
     <h1>🐂 GanadoBravo — Evaluación IA</h1>
 
     <div class="card">
-      <form id="uploadForm" method="post" action="https://web-production-4037a.up.railway.app/api/evaluate" enctype="multipart/form-data">
+      <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
         <div class="row">
           <div>
             <label for="category">Categoría</label>
@@ -50,7 +51,17 @@
           </div>
         </div>
 
-        <input id="proHidden" type="hidden" name="pro" value="0"/>
+        <div class="mt">
+          <label><input type="checkbox" id="pro" /> Pro mode (LiDAR/Depth)</label>
+        </div>
+        <div id="proPanel" class="hidden mt">
+          <div id="proUnsupported" class="warn hidden">Tu teléfono no soporta escáner 3D.</div>
+          <div id="proControls" class="hidden">
+            <button type="button" id="scanBtn" style="margin-bottom:10px">Escanear ahora</button>
+            <div style="color:var(--muted)">Si no se abre, usa una app externa (Polycam, Scaniverse) y luego sube el archivo 3D por fuera (por ahora el análisis seguirá siendo 2D).</div>
+          </div>
+          <input type="hidden" name="pro" id="proHidden" value="0" />
+        </div>
 
         <button id="submitBtn" type="submit" class="mt">
           <span id="btnText">Evaluar</span>
@@ -74,6 +85,15 @@
   </div></div>
 
 <script>
+function supports3D(){
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const webxr = 'xr' in navigator;
+  const motion = 'DeviceMotionEvent' in window || 'ondevicemotion' in window;
+  return (isIOS && motion) || (isAndroid && webxr);
+}
+
 function renderViz(data, imgURL){
   const root = document.getElementById('viz');
   root.classList.remove('hidden');
@@ -113,10 +133,11 @@ function renderViz(data, imgURL){
   const row = document.createElement('div'); row.className='row2 mt';
   const health = document.createElement('div'); health.className='card'; health.style.padding='12px';
   const breed  = document.createElement('div'); breed.className='card'; breed.style.padding='12px';
+  const flags = (data.health?.flags||[]).map(x => x.replaceAll('_',' ')).join(', ');
   health.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Salud</div>
-    <div style="color:var(--muted)">${(data.health?.flags?.length? data.health.flags.join(', ') : 'Sin banderas')}</div>`;
+    <div style="color:var(--muted)">${flags || 'Sin banderas'}</div>`;
   breed.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Raza (estimada)</div>
-    <div style="color:var(--muted)">${data.breed?.guess || '—'} — conf: ${(data.breed?.confidence??0)*100|0}%</div>`;
+    <div style="color:var(--muted)">${data.breed?.guess || 'Indeterminado'} — conf: ${Math.round((data.breed?.confidence??0)*100)}%</div>`;
   row.appendChild(health); row.appendChild(breed);
   root.appendChild(row);
 }
@@ -129,6 +150,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const out = document.getElementById('out');
   const errorP = document.getElementById('error');
   const overlay = document.getElementById('busyOverlay');
+
+  const proChk = document.getElementById('pro');
+  const proPanel = document.getElementById('proPanel');
+  const proHidden = document.getElementById('proHidden');
+  const proUnsupported = document.getElementById('proUnsupported');
+  const proControls = document.getElementById('proControls');
+  const scanBtn = document.getElementById('scanBtn');
+
+  proChk.addEventListener('change', () => {
+    proPanel.classList.toggle('hidden', !proChk.checked);
+    const ok3d = supports3D();
+    proUnsupported.classList.toggle('hidden', ok3d);
+    proControls.classList.toggle('hidden', !ok3d);
+    proHidden.value = proChk.checked && ok3d ? "1" : "0";
+  });
+
+  if (scanBtn){
+    scanBtn.addEventListener('click', () => {
+      window.location.href = "polycam://";
+      setTimeout(()=>{
+        alert("Si no se abrió tu app de escaneo, instala Polycam/Scaniverse y vuelve a intentar. (Mientras tanto, puedes evaluar en 2D).");
+      }, 1200);
+    });
+  }
 
   form.addEventListener('submit', async function onSubmit(e){
     e.preventDefault();
@@ -151,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error(err);
       errorP.textContent = err?.message || String(err);
       errorP.classList.remove('hidden');
-      try{ form.removeEventListener('submit', onSubmit); form.submit(); }catch(_){}
     }finally{
       overlay.classList.remove('show');
       btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
