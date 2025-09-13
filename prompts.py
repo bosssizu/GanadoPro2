@@ -46,6 +46,14 @@ Devuelve SOLO {"rubric":{...}} en json con las 11 métricas (0–10, pasos 0.5) 
 Responde en json puro sin texto adicional.
 """
 
+# Súper estricto: fuerza EXACTAMENTE las 11 claves españolas y solo números.
+STRICT_RUBRIC_PROMPT_ES = """
+Devuelve SOLO {"rubric":{...}} en json con las 11 métricas y ESTOS nombres exactos (sin variantes):
+"Condición corporal (BCS)","Conformación general","Línea dorsal","Angulación costillar","Profundidad de pecho",
+"Aplomos (patas)","Lomo","Grupo / muscling posterior","Balance anterior–posterior","Ancho torácico","Inserción de cola".
+Cada valor debe ser un número (0 a 10) con incrementos de 0.5. No incluyas texto adicional.
+"""
+
 HEALTH_ONLY_PROMPT_ES = """
 Devuelve SOLO {"health":{"flags":[...],"notes":""}} en json evaluando las 9 banderas indicadas.
 Responde en json puro sin texto adicional.
@@ -124,4 +132,34 @@ EVALUATION_SCHEMA = {
         "lidar_metrics": {"type": ["object", "null"]},
     },
     "required": ["engine", "mode", "category", "rubric", "decision", "health", "breed"],
+}
+
+STRICT_RUBRIC_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "rubric": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "Condición corporal (BCS)": {"type": "number", "minimum": 0, "maximum": 10},
+                "Conformación general": {"type": "number", "minimum": 0, "maximum": 10},
+                "Línea dorsal": {"type": "number", "minimum": 0, "maximum": 10},
+                "Angulación costillar": {"type": "number", "minimum": 0, "maximum": 10},
+                "Profundidad de pecho": {"type": "number", "minimum": 0, "maximum": 10},
+                "Aplomos (patas)": {"type": "number", "minimum": 0, "maximum": 10},
+                "Lomo": {"type": "number", "minimum": 0, "maximum": 10},
+                "Grupo / muscling posterior": {"type": "number", "minimum": 0, "maximum": 10},
+                "Balance anterior–posterior": {"type": "number", "minimum": 0, "maximum": 10},
+                "Ancho torácico": {"type": "number", "minimum": 0, "maximum": 10},
+                "Inserción de cola": {"type": "number", "minimum": 0, "maximum": 10},
+            },
+            "required": [
+                "Condición corporal (BCS)","Conformación general","Línea dorsal","Angulación costillar",
+                "Profundidad de pecho","Aplomos (patas)","Lomo","Grupo / muscling posterior",
+                "Balance anterior–posterior","Ancho torácico","Inserción de cola"
+            ],
+        }
+    },
+    "required": ["rubric"]
 }

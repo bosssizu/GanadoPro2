@@ -9,7 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from openai import AsyncOpenAI
 from prompts import (
     JSON_GUARD, EVALUATION_PROMPT_ES, EVALUATION_SCHEMA,
-    RUBRIC_ONLY_PROMPT_ES, HEALTH_ONLY_PROMPT_ES, BREED_ONLY_PROMPT_ES
+    RUBRIC_ONLY_PROMPT_ES, STRICT_RUBRIC_PROMPT_ES, STRICT_RUBRIC_SCHEMA,
+    HEALTH_ONLY_PROMPT_ES, BREED_ONLY_PROMPT_ES
 )
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -18,7 +19,7 @@ MODEL = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL) if OPENAI_BASE_URL else AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-app = FastAPI(title="GanadoBravo IA v4.3.3")
+app = FastAPI(title="GanadoBravo IA v4.3.4")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -40,7 +41,6 @@ def _round05(x: float) -> float:
 
 def _norm_basic(s: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower().strip()
-    # elimina todo lo no alfanumérico para tolerar -, –, /, () y espacios
     s = re.sub(r"[^a-z0-9]+", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
@@ -59,9 +59,7 @@ CANON_LIST = [
     "Inserción de cola",
 ]
 
-# construye un mapa tolerante de variantes -> clave canónica
 def build_canon():
-    m = {}
     variants = {}
     for k in CANON_LIST:
         v = [
@@ -72,17 +70,24 @@ def build_canon():
         ]
         for a in v:
             variants[_norm_basic(a)] = k
-    # variantes comunes manuales
+    # manuales + posibles en inglés
     variants[_norm_basic("balance anterior-posterior")] = "Balance anterior–posterior"
     variants[_norm_basic("grupo muscling posterior")] = "Grupo / muscling posterior"
     variants[_norm_basic("condicion corporal")] = "Condición corporal (BCS)"
-    variants[_norm_basic("aplomos patas")] = "Aplomos (patas)"
-    variants[_norm_basic("ancho toracico")] = "Ancho torácico"
-    variants[_norm_basic("insercion de cola")] = "Inserción de cola"
+    variants[_norm_basic("body condition score")] = "Condición corporal (BCS)"
+    variants[_norm_basic("general conformation")] = "Conformación general"
+    variants[_norm_basic("dorsal line")] = "Línea dorsal"
+    variants[_norm_basic("rib angulation")] = "Angulación costillar"
+    variants[_norm_basic("chest depth")] = "Profundidad de pecho"
+    variants[_norm_basic("legs alignment")] = "Aplomos (patas)"
+    variants[_norm_basic("loin")] = "Lomo"
+    variants[_norm_basic("hind muscling group")] = "Grupo / muscling posterior"
+    variants[_norm_basic("thoracic width")] = "Ancho torácico"
+    variants[_norm_basic("tail insertion")] = "Inserción de cola"
     return variants
 
 CANON = build_canon()
-ORDER = CANON_LIST[:]  # orden fijo
+ORDER = CANON_LIST[:]
 
 def canonicalize_rubric(rub: dict | None) -> dict:
     out = {}
@@ -156,11 +161,20 @@ async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
             raise
         return data
 
+async def refetch_rubric_strict(image_b64: str) -> dict:
+    r = await run_prompt(STRICT_RUBRIC_PROMPT_ES, image_b64, STRICT_RUBRIC_SCHEMA)
+    rub = r.get("rubric") or {}
+    return canonicalize_rubric(rub)
+
 async def ensure_rubric(image_b64: str, data: dict) -> dict:
     rub = canonicalize_rubric(data.get("rubric") or data.get("morphological_rubric"))
-    if len(rub) < 11:
+    if len(rub) < 11 or sum(rub.values()) == 0:
+        # 1er intento: prompt de rúbrica
         r = await run_prompt(RUBRIC_ONLY_PROMPT_ES, image_b64, None)
-        rub.update(canonicalize_rubric(r.get("rubric")))
+        rub = canonicalize_rubric(r.get("rubric"))
+    if len(rub) < 11 or sum(rub.values()) == 0:
+        # 2do intento: súper estricto con JSON Schema exacto
+        rub = await refetch_rubric_strict(image_b64)
     for key in ORDER:
         rub.setdefault(key, 0.0)
     return rub
@@ -204,9 +218,9 @@ async def evaluate(
 
     decision = data.get("decision") or {}
     gs = decision.get("global_score")
-    if gs is None:
+    if gs is None or gs == 0:
         try:
-            gs = statistics.mean([v for v in rubric.values()])
+            gs = statistics.mean([v for v in rubric.values()]) if rubric else 0.0
         except:
             gs = 0.0
     decision.setdefault("global_score", round(gs, 1))
