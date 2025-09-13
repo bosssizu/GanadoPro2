@@ -1,4 +1,3 @@
-
 # prompts.py
 EVALUATION_PROMPT_ES = """
 Eres un evaluador técnico de ganado de carne/leche. Analiza UNA sola imagen del animal.
@@ -32,6 +31,8 @@ Responde SOLO en JSON válido según el schema. Usa valores estables (determinis
 - "guess": nombre común (p.ej. "Brahman", "Nelore", "Gyr", "Girolando", "Holstein",
   "Jersey", "Angus", "Simmental", "Cebú", "Mestizo", etc.). Si no es inferible, usa "Indeterminado".
 - "confidence": 0–1
+
+5) (Opcional) Comentarios por métrica en "rubric_notes": frases muy breves (máx 12 palabras) explicando el valor dado a cada métrica.
 
 Reglas:
 - No inventes: si algo no se ve, no lo marques.
@@ -73,22 +74,36 @@ EVALUATION_SCHEMA = {
                 "Grupo / muscling posterior",
                 "Balance anterior–posterior",
                 "Ancho torácico",
-                "Inserción de cola",
-            ],
+                "Inserción de cola"
+            ]
+        },
+        "rubric_notes": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "Condición corporal (BCS)": {"type": "string"},
+                "Conformación general": {"type": "string"},
+                "Línea dorsal": {"type": "string"},
+                "Angulación costillar": {"type": "string"},
+                "Profundidad de pecho": {"type": "string"},
+                "Aplomos (patas)": {"type": "string"},
+                "Lomo": {"type": "string"},
+                "Grupo / muscling posterior": {"type": "string"},
+                "Balance anterior–posterior": {"type": "string"},
+                "Ancho torácico": {"type": "string"},
+                "Inserción de cola": {"type": "string"}
+            }
         },
         "decision": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
                 "global_score": {"type": "number"},
-                "decision_level": {
-                    "type": "string",
-                    "enum": ["CONSIDERAR_ALTO", "CONSIDERAR_BAJO", "DESCARTAR"],
-                },
+                "decision_level": {"type": "string", "enum": ["CONSIDERAR_ALTO", "CONSIDERAR_BAJO", "DESCARTAR"]},
                 "decision_text": {"type": "string"},
-                "rationale": {"type": "string"},
+                "rationale": {"type": "string"}
             },
-            "required": ["global_score", "decision_level", "decision_text", "rationale"],
+            "required": ["global_score", "decision_level", "decision_text", "rationale"]
         },
         "health": {
             "type": "object",
@@ -96,35 +111,25 @@ EVALUATION_SCHEMA = {
             "properties": {
                 "flags": {
                     "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "lesion_cutanea",
-                            "claudicacion",
-                            "secrecion_nasal",
-                            "conjuntivitis",
-                            "diarrea",
-                            "dermatitis",
-                            "lesion_de_pezuna",
-                            "parasitos_externos",
-                            "tos",
-                        ],
-                    },
+                    "items": {"type": "string", "enum": [
+                        "lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis",
+                        "diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"
+                    ]}
                 },
-                "notes": {"type": "string"},
+                "notes": {"type": "string"}
             },
-            "required": ["flags", "notes"],
+            "required": ["flags", "notes"]
         },
         "breed": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
                 "guess": {"type": "string"},
-                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1}
             },
-            "required": ["guess", "confidence"],
+            "required": ["guess", "confidence"]
         },
-        "lidar_metrics": {"type": ["object", "null"]},
+        "lidar_metrics": {"type": ["object", "null"]}
     },
-    "required": ["engine", "mode", "category", "rubric", "decision", "health", "breed"],
+    "required": ["engine", "mode", "category", "rubric", "decision", "health", "breed"]
 }

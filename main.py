@@ -15,7 +15,7 @@ MODEL = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL) if OPENAI_BASE_URL else AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-app = FastAPI(title="GanadoBravo IA v4.2 (prompt único)")
+app = FastAPI(title="GanadoBravo IA v4.2.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -34,6 +34,21 @@ async def _all_errors(request, exc):
 
 def _round05(x: float) -> float:
     return round(x*2)/2.0
+
+def _alias_keys(d: dict):
+    if "rubric" not in d and "morphological_rubric" in d:
+        d["rubric"] = d.pop("morphological_rubric")
+    if "breed" not in d:
+        guess = d.pop("breed_guess", None)
+        conf = d.pop("breed_confidence", None)
+        if guess is not None or conf is not None:
+            d["breed"] = {"guess": guess or "Indeterminado", "confidence": float(conf or 0.0)}
+    if "health" not in d:
+        flags = d.pop("health_flags", None)
+        notes = d.pop("health_notes", None)
+        if flags is not None or notes is not None:
+            d["health"] = {"flags": flags or [], "notes": notes or ""}
+    return d
 
 async def run_prompt(prompt: str, image_b64: str, schema: dict | None):
     content = [
@@ -84,6 +99,8 @@ async def evaluate(
     prompt = EVALUATION_PROMPT_ES.strip()
     data = await run_prompt(prompt=prompt, image_b64=image_b64, schema=EVALUATION_SCHEMA)
 
+    data = _alias_keys(data)
+
     data["engine"] = MODEL
     data["mode"] = mode
     data["category"] = category.strip().lower()
@@ -101,7 +118,8 @@ async def evaluate(
 
     allowed = {"lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis","diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"}
     flags = data.get("health", {}).get("flags", [])
-    if not isinstance(flags, list): flags = []
+    if not isinstance(flags, list):
+        flags = []
     data["health"]["flags"] = [f for f in flags if f in allowed]
 
     return data

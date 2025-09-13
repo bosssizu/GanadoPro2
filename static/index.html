@@ -19,15 +19,15 @@
     .hidden{display:none!important}
     .error{color:var(--err);margin-top:12px;font-weight:600}
     pre{background:#0b1020;color:#e5e7eb;padding:12px;border-radius:12px;overflow:auto;max-height:300px}
-    .bar{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
-    .bar > span{display:block;height:100%;background:#f59e0b}
     .tag{display:inline-block;background:#eef2ff;color:#1e40af;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:8px 6px;text-align:left}
+    .muted{color:var(--muted)}
     #busyOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:saturate(130%) blur(2px)}
     #busyOverlay.show{display:flex}
     .spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
-    .warn{background:#fff7ed;border:1px dashed #f59e0b;color:#7c2d12;padding:10px;border-radius:12px}
   </style>
 </head>
 <body>
@@ -51,18 +51,6 @@
           </div>
         </div>
 
-        <div class="mt">
-          <label><input type="checkbox" id="pro" /> Pro mode (LiDAR/Depth)</label>
-        </div>
-        <div id="proPanel" class="hidden mt">
-          <div id="proUnsupported" class="warn hidden">Tu teléfono no soporta escáner 3D.</div>
-          <div id="proControls" class="hidden">
-            <button type="button" id="scanBtn" style="margin-bottom:10px">Escanear ahora</button>
-            <div style="color:var(--muted)">Si no se abre, usa una app externa (Polycam, Scaniverse) y luego sube el archivo 3D por fuera (por ahora el análisis seguirá siendo 2D).</div>
-          </div>
-          <input type="hidden" name="pro" id="proHidden" value="0" />
-        </div>
-
         <button id="submitBtn" type="submit" class="mt">
           <span id="btnText">Evaluar</span>
           <span id="spinner" class="hidden"> ⏳</span>
@@ -74,7 +62,7 @@
     <div id="viz" class="card mt hidden"></div>
     <div class="card mt">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span class="tag">JSON</span><span class="muted" style="color:var(--muted)">Respuesta completa (debug)</span>
+        <span class="tag">JSON</span><span class="muted">Respuesta completa (debug)</span>
       </div>
       <pre id="out">{}</pre>
     </div>
@@ -85,15 +73,6 @@
   </div></div>
 
 <script>
-function supports3D(){
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
-  const webxr = 'xr' in navigator;
-  const motion = 'DeviceMotionEvent' in window || 'ondevicemotion' in window;
-  return (isIOS && motion) || (isAndroid && webxr);
-}
-
 function renderViz(data, imgURL){
   const root = document.getElementById('viz');
   root.classList.remove('hidden');
@@ -105,39 +84,41 @@ function renderViz(data, imgURL){
   img.src = imgURL || ''; img.width = 90; img.height = 70; img.style.objectFit='cover'; img.style.borderRadius='12px'; img.style.background='#eee';
   const title = document.createElement('div');
   title.innerHTML = `<div style="font-size:18px;font-weight:800;text-transform:uppercase">${(data.category||'').replace('_',' ')}</div>
-    <div><span class="tag">${data.mode||'Standard'}</span>
+    <div><span class="tag">${data.mode||'standard'}</span>
     <span class="tag" style="background:#ecfccb;color:#166534;margin-left:6px">${(data.decision?.decision_level||'').replace('_',' ').toLowerCase()}</span></div>
-    <div style="color:var(--muted)">${data.decision?.decision_text||''}</div>`;
+    <div class="muted">${data.decision?.decision_text||''}</div>`;
   head.appendChild(img); head.appendChild(title);
   root.appendChild(head);
 
-  const grid = document.createElement('div'); grid.className='row2 mt';
-  const rubric = data.rubric || {};
-  const entries = Object.entries(rubric);
-  const half = Math.ceil(entries.length/2);
-  const cols = [entries.slice(0,half), entries.slice(half)];
-  cols.forEach(col => {
-    const colDiv = document.createElement('div');
-    col.forEach(([name,val]) => {
-      const box = document.createElement('div');
-      box.style.marginBottom = '10px';
-      box.innerHTML = `<div style="display:flex;justify-content:space-between">
-          <div>${name}</div><div>${val}</div></div>
-        <div class="bar"><span style="width:${Math.max(0,Math.min(10,Number(val)))*10}%"></span></div>`;
-      colDiv.appendChild(box);
-    });
-    grid.appendChild(colDiv);
+  const rubric = data.rubric || data.morphological_rubric || {};
+  const notes = data.rubric_notes || {};
+  const order = [
+    "Condición corporal (BCS)","Conformación general","Línea dorsal","Angulación costillar","Profundidad de pecho",
+    "Aplomos (patas)","Lomo","Grupo / muscling posterior","Balance anterior–posterior","Ancho torácico","Inserción de cola"
+  ];
+
+  const table = document.createElement('table'); table.className='table mt';
+  const thead = document.createElement('thead'); thead.innerHTML = "<tr><th>Métrica</th><th>Score</th><th>Obs</th></tr>";
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  order.forEach(k => {
+    const tr = document.createElement('tr');
+    const val = rubric[k] ?? "";
+    const note = notes[k] ?? "";
+    tr.innerHTML = `<td>${k}</td><td>${val}</td><td class="muted">${note}</td>`;
+    tbody.appendChild(tr);
   });
-  root.appendChild(grid);
+  table.appendChild(tbody);
+  root.appendChild(table);
 
   const row = document.createElement('div'); row.className='row2 mt';
   const health = document.createElement('div'); health.className='card'; health.style.padding='12px';
   const breed  = document.createElement('div'); breed.className='card'; breed.style.padding='12px';
   const flags = (data.health?.flags||[]).map(x => x.replaceAll('_',' ')).join(', ');
   health.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Salud</div>
-    <div style="color:var(--muted)">${flags || 'Sin banderas'}</div>`;
+    <div class="muted">${flags || 'Sin banderas'}</div>`;
   breed.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Raza (estimada)</div>
-    <div style="color:var(--muted)">${data.breed?.guess || 'Indeterminado'} — conf: ${Math.round((data.breed?.confidence??0)*100)}%</div>`;
+    <div class="muted">${data.breed?.guess || 'Indeterminado'} — conf: ${Math.round((data.breed?.confidence??0)*100)}%</div>`;
   row.appendChild(health); row.appendChild(breed);
   root.appendChild(row);
 }
@@ -150,30 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const out = document.getElementById('out');
   const errorP = document.getElementById('error');
   const overlay = document.getElementById('busyOverlay');
-
-  const proChk = document.getElementById('pro');
-  const proPanel = document.getElementById('proPanel');
-  const proHidden = document.getElementById('proHidden');
-  const proUnsupported = document.getElementById('proUnsupported');
-  const proControls = document.getElementById('proControls');
-  const scanBtn = document.getElementById('scanBtn');
-
-  proChk.addEventListener('change', () => {
-    proPanel.classList.toggle('hidden', !proChk.checked);
-    const ok3d = supports3D();
-    proUnsupported.classList.toggle('hidden', ok3d);
-    proControls.classList.toggle('hidden', !ok3d);
-    proHidden.value = proChk.checked && ok3d ? "1" : "0";
-  });
-
-  if (scanBtn){
-    scanBtn.addEventListener('click', () => {
-      window.location.href = "polycam://";
-      setTimeout(()=>{
-        alert("Si no se abrió tu app de escaneo, instala Polycam/Scaniverse y vuelve a intentar. (Mientras tanto, puedes evaluar en 2D).");
-      }, 1200);
-    });
-  }
 
   form.addEventListener('submit', async function onSubmit(e){
     e.preventDefault();
