@@ -1,62 +1,18 @@
+# -*- coding: utf-8 -*-
+
+RUBRIC_METRICS = ['Condición corporal (BCS)', 'Conformación general', 'Línea dorsal', 'Angulación costillar', 'Profundidad de pecho', 'Aplomos (patas)', 'Lomo', 'Grupo / muscling posterior', 'Balance anterior-posterior', 'Ancho torácico', 'Inserción de cola']
+
 RUBRIC_SCHEMA = {
   "type": "object",
   "properties": {
     "rubric": {
       "type": "object",
-      "properties": {
-        "Condición corporal (BCS)": {
-          "type": "number"
-        },
-        "Conformación general": {
-          "type": "number"
-        },
-        "Línea dorsal": {
-          "type": "number"
-        },
-        "Angulación costillar": {
-          "type": "number"
-        },
-        "Profundidad de pecho": {
-          "type": "number"
-        },
-        "Aplomos (patas)": {
-          "type": "number"
-        },
-        "Lomo": {
-          "type": "number"
-        },
-        "Grupo / muscling posterior": {
-          "type": "number"
-        },
-        "Balance anterior-posterior": {
-          "type": "number"
-        },
-        "Ancho torácico": {
-          "type": "number"
-        },
-        "Inserción de cola": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "Condición corporal (BCS)",
-        "Conformación general",
-        "Línea dorsal",
-        "Angulación costillar",
-        "Profundidad de pecho",
-        "Aplomos (patas)",
-        "Lomo",
-        "Grupo / muscling posterior",
-        "Balance anterior-posterior",
-        "Ancho torácico",
-        "Inserción de cola"
-      ]
+      "properties": {'Condición corporal (BCS)': {"type": "number"}, 'Conformación general': {"type": "number"}, 'Línea dorsal': {"type": "number"}, 'Angulación costillar': {"type": "number"}, 'Profundidad de pecho': {"type": "number"}, 'Aplomos (patas)': {"type": "number"}, 'Lomo': {"type": "number"}, 'Grupo / muscling posterior': {"type": "number"}, 'Balance anterior-posterior': {"type": "number"}, 'Ancho torácico': {"type": "number"}, 'Inserción de cola': {"type": "number"}},
+      "required": ['Condición corporal (BCS)', 'Conformación general', 'Línea dorsal', 'Angulación costillar', 'Profundidad de pecho', 'Aplomos (patas)', 'Lomo', 'Grupo / muscling posterior', 'Balance anterior-posterior', 'Ancho torácico', 'Inserción de cola']
     }
   },
-  "required": [
-    "rubric"
-  ],
-  "additionalProperties": false
+  "required": ["rubric"],
+  "additionalProperties": False
 }
 
 HEALTH_SCHEMA = {
@@ -65,26 +21,14 @@ HEALTH_SCHEMA = {
     "health": {
       "type": "object",
       "properties": {
-        "flags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "notes": {
-          "type": "string"
-        }
+        "flags": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "string"}
       },
-      "required": [
-        "flags",
-        "notes"
-      ]
+      "required": ["flags", "notes"]
     }
   },
-  "required": [
-    "health"
-  ],
-  "additionalProperties": false
+  "required": ["health"],
+  "additionalProperties": False
 }
 
 BREED_SCHEMA = {
@@ -93,31 +37,20 @@ BREED_SCHEMA = {
     "breed": {
       "type": "object",
       "properties": {
-        "guess": {
-          "type": "string"
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        }
+        "guess": {"type": "string"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
       },
-      "required": [
-        "guess",
-        "confidence"
-      ]
+      "required": ["guess", "confidence"]
     }
   },
-  "required": [
-    "breed"
-  ],
-  "additionalProperties": false
+  "required": ["breed"],
+  "additionalProperties": False
 }
 
 PROMPT_1 = (
   "Evalúa morfología de un bovino en 11 métricas de 0.0 a 10.0 (pasos de 0.5). "
   "Usa EXCLUSIVAMENTE estas claves y devuélvelas en JSON bajo 'rubric': "
-  "['Condición corporal (BCS)', 'Conformación general', 'Línea dorsal', 'Angulación costillar', 'Profundidad de pecho', 'Aplomos (patas)', 'Lomo', 'Grupo / muscling posterior', 'Balance anterior-posterior', 'Ancho torácico', 'Inserción de cola']. "
+  "Condición corporal (BCS), Conformación general, Línea dorsal, Angulación costillar, Profundidad de pecho, Aplomos (patas), Lomo, Grupo / muscling posterior, Balance anterior-posterior, Ancho torácico, Inserción de cola. "
   "Sé consistente y conservador. No agregues texto fuera del JSON."
 )
 
