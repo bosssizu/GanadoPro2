@@ -6,10 +6,12 @@
   <title>GanadoBravo IA</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
+<body data-hasjs="0" class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
   <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
+  <iframe name="uploadTarget" style="display:none" aria-hidden="true"></iframe>
 
-  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data" method="post" action="https://web-production-4037a.up.railway.app/api/evaluate" enctype="multipart/form-data">
+
+  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data" method="post" action="https://web-production-4037a.up.railway.app/api/evaluate" enctype="multipart/form-data" onsubmit="return false;" target="uploadTarget">
     <label class="block text-sm font-semibold">Categoría</label>
     <select name="category" required class="w-full border rounded-lg p-2">
       <option value="vaca flaca">Vaca flaca</option>
@@ -40,6 +42,7 @@
     </button>
 
     <p id="error" class="text-red-600 text-sm hidden"></p>
+<p id="bootWarn" class="text-amber-700 text-xs hidden">Si ves JSON crudo, recarga la página. El formulario no debería navegar.</p>
     <div id="notice" class="hidden w-full mt-2 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg p-2"></div>
 <button type="button" id="btn2D" class="hidden mt-2 px-3 py-2 rounded bg-gray-800 text-white text-sm">Tomar foto 2D</button>
   </form>
@@ -51,6 +54,8 @@
   </details>
 
 <script>
+try{ document.body.setAttribute('data-hasjs','1'); }catch(e){}
+
 const RUBRIC_ORDER = [
   "Condición corporal (BCS)",
   "Conformación general",
@@ -66,6 +71,7 @@ const RUBRIC_ORDER = [
 ];
 
 const form = document.getElementById('uploadForm');
+window.__gb_booted__ = true;
 const btn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
 const spinner = document.getElementById('spinner');
@@ -192,7 +198,7 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   errorP.classList.add('hidden'); notice.classList.add('hidden');
   out.textContent = '';
-  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
+  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...'; document.getElementById('busyOverlay').classList.remove('hidden');
   const fd = new FormData(form);
   const fileIn = form.querySelector('input[name="file"]');
   const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
@@ -212,7 +218,7 @@ form.addEventListener('submit', async (e) => {
     errorP.textContent = (err && err.message) ? err.message : String(err);
     errorP.classList.remove('hidden');
   } finally {
-    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
+    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar'; document.getElementById('busyOverlay').classList.add('hidden');
   }
 });
     const txt = await res.text(); let data;
@@ -224,9 +230,20 @@ form.addEventListener('submit', async (e) => {
     errorP.textContent = (err && err.message) ? err.message : String(err);
     errorP.classList.remove('hidden');
   } finally {
-    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
+    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar'; document.getElementById('busyOverlay').classList.add('hidden');
   }
 });
 </script>
+
+  <div id="busyOverlay" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl p-6 flex items-center gap-3">
+      <svg class="animate-spin h-6 w-6 text-gray-800" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <div class="font-semibold">Evaluando…</div>
+    </div>
+  </div>
+
 </body>
 </html>
