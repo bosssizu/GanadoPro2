@@ -1,197 +1,124 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GanadoBravo IA</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>GanadoBravo — Evaluación IA</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--text:#111;--muted:#6b7280;--accent:#16a34a;--warn:#c2410c;--err:#b91c1c;}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    .container{max-width:980px;margin:24px auto;padding:16px}
+    .card{background:var(--card);border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.06);padding:16px}
+    h1{font-size:24px;margin:0 0 12px;text-align:center}
+    label{font-weight:600;display:block;margin:12px 0 6px}
+    select,input[type=file]{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+    button{width:100%;padding:14px 16px;border:0;border-radius:999px;background:#16a34a;color:#fff;font-weight:800;font-size:20px;cursor:pointer}
+    button[disabled]{opacity:.5;cursor:not-allowed}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .mt{margin-top:16px}
+    .hidden{display:none!important}
+    .error{color:var(--err);margin-top:12px;font-weight:600}
+    pre{background:#0b1020;color:#e5e7eb;padding:12px;border-radius:12px;overflow:auto;max-height:300px}
+    .bar{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+    .bar > span{display:block;height:100%;background:#f59e0b}
+    .tag{display:inline-block;background:#eef2ff;color:#1e40af;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    #busyOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:saturate(130%) blur(2px)}
+    #busyOverlay.show{display:flex}
+    .spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
 </head>
-<body data-hasjs="0" class="bg-gray-50 min-h-screen flex flex-col items-center p-6">
-  <h1 class="text-3xl font-bold mb-4 text-center">🐂 GanadoBravo — Evaluación IA</h1>
-  <iframe name="uploadTarget" style="display:none" aria-hidden="true"></iframe>
+<body>
+  <div class="container">
+    <h1>🐂 GanadoBravo — Evaluación IA</h1>
 
+    <div class="card">
+      <form id="uploadForm" method="post" action="https://web-production-4037a.up.railway.app/api/evaluate" enctype="multipart/form-data">
+        <div class="row">
+          <div>
+            <label for="category">Categoría</label>
+            <select id="category" name="category">
+              <option value="levante">Levante</option>
+              <option value="vaca_flaca">Vaca flaca</option>
+              <option value="engorde">Engorde</option>
+            </select>
+          </div>
+          <div>
+            <label for="file">Imagen del animal</label>
+            <input id="file" name="file" type="file" accept="image/*" capture="environment" required />
+          </div>
+        </div>
 
-  <form id="uploadForm" class="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-5 space-y-3" enctype="multipart/form-data" method="post" action="https://web-production-4037a.up.railway.app/api/evaluate" enctype="multipart/form-data" onsubmit="return false;">
-    <label class="block text-sm font-semibold">Categoría</label>
-    <select name="category" required class="w-full border rounded-lg p-2">
-      <option value="vaca flaca">Vaca flaca</option>
-      <option value="levante" selected>Levante</option>
-      <option value="engorde">Engorde</option>
-    </select>
+        <input id="proHidden" type="hidden" name="pro" value="0"/>
 
-    <label class="block text-sm font-semibold">Imagen del animal</label>
-    <input type="file" name="file" accept="image/*" capture="environment" required class="block w-full text-sm border rounded-lg p-2 bg-gray-50">
-
-    <label class="flex items-center gap-2 mt-2">
-      <input type="checkbox" id="proToggle" class="h-4 w-4">
-      <span class="text-sm font-semibold">Pro mode (LiDAR/Depth)</span>
-    </label>
-    <input type="hidden" name="pro" id="proHidden" value="">
-
-    <div id="proFields" class="hidden space-y-2 border rounded-lg p-3 bg-gray-50">
-      <button type="button" id="scanNowBtn" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700">Escanear ahora</button>
-      <div class="text-xs text-gray-600">¿No tienes la app? Usa Polycam/Scaniverse y luego sube tu archivo 3D.</div>
-      <input type="file" name="mesh_file" accept=".obj,.ply,.glb,.gltf,.usd,.usdz" class="block w-full text-sm border rounded-lg p-2 bg-white">
-      <label class="block text-xs text-gray-600">Meta JSON (opcional)</label>
-      <textarea name="meta_json" rows="3" class="w-full text-xs border rounded-lg p-2" placeholder='{"units":"m","scale":1.0}'></textarea>
+        <button id="submitBtn" type="submit" class="mt">
+          <span id="btnText">Evaluar</span>
+          <span id="spinner" class="hidden"> ⏳</span>
+        </button>
+        <p id="error" class="error hidden"></p>
+      </form>
     </div>
 
-    <button id="submitBtn" type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2">
-      <span id="btnText">Evaluar</span>
-      <span id="spinner" class="hidden animate-spin">⏳</span>
-    </button>
+    <div id="viz" class="card mt hidden"></div>
+    <div class="card mt">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="tag">JSON</span><span class="muted" style="color:var(--muted)">Respuesta completa (debug)</span>
+      </div>
+      <pre id="out">{}</pre>
+    </div>
+  </div>
 
-    <p id="error" class="text-red-600 text-sm hidden"></p>
-<p id="bootWarn" class="text-amber-700 text-xs hidden">Si ves JSON crudo, recarga la página. El formulario no debería navegar.</p>
-    <div id="notice" class="hidden w-full mt-2 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg p-2"></div>
-<button type="button" id="btn2D" class="hidden mt-2 px-3 py-2 rounded bg-gray-800 text-white text-sm">Tomar foto 2D</button>
-  </form>
-
-  <div id="viz" class="mt-6 w-full max-w-4xl grid gap-4"></div>
-  <details class="w-full max-w-4xl bg-white p-3 rounded-xl shadow mt-4">
-    <summary class="cursor-pointer font-semibold">Ver JSON</summary>
-    <pre id="out" class="text-xs overflow-auto"></pre>
-  </details>
+  <div id="busyOverlay"><div style="background:#fff;border-radius:16px;padding:14px 16px;display:flex;gap:10px;align-items:center">
+    <div class="spinner"></div><div style="font-weight:700">Evaluando…</div>
+  </div></div>
 
 <script>
-try{ document.body.setAttribute('data-hasjs','1'); }catch(e){}
+function renderViz(data, imgURL){
+  const root = document.getElementById('viz');
+  root.classList.remove('hidden');
+  root.innerHTML = "";
 
-const RUBRIC_ORDER = [
-  "Condición corporal (BCS)",
-  "Conformación general",
-  "Línea dorsal",
-  "Angulación costillar",
-  "Profundidad de pecho",
-  "Aplomos (patas)",
-  "Lomo",
-  "Grupo / muscling posterior",
-  "Balance anterior-posterior",
-  "Ancho torácico",
-  "Inserción de cola"
-];
+  const head = document.createElement('div');
+  head.style.display = 'flex'; head.style.alignItems = 'center'; head.style.gap = '12px';
+  const img = document.createElement('img');
+  img.src = imgURL || ''; img.width = 90; img.height = 70; img.style.objectFit='cover'; img.style.borderRadius='12px'; img.style.background='#eee';
+  const title = document.createElement('div');
+  title.innerHTML = `<div style="font-size:18px;font-weight:800;text-transform:uppercase">${(data.category||'').replace('_',' ')}</div>
+    <div><span class="tag">${data.mode||'Standard'}</span>
+    <span class="tag" style="background:#ecfccb;color:#166534;margin-left:6px">${(data.decision?.decision_level||'').replace('_',' ').toLowerCase()}</span></div>
+    <div style="color:var(--muted)">${data.decision?.decision_text||''}</div>`;
+  head.appendChild(img); head.appendChild(title);
+  root.appendChild(head);
 
-const form = document.getElementById('uploadForm');
-window.__gb_booted__ = true;
-const btn = document.getElementById('submitBtn');
-const btnText = document.getElementById('btnText');
-const spinner = document.getElementById('spinner');
-const out = document.getElementById('out');\nconst uploadFrame = document.querySelector('iframe[name="uploadTarget"]');
-const errorP = document.getElementById('error');
-const proToggle = document.getElementById('proToggle');
-const proFields = document.getElementById('proFields');
-const proHidden = document.getElementById('proHidden');
-const notice = document.getElementById('notice');
+  const grid = document.createElement('div'); grid.className='row2 mt';
+  const rubric = data.rubric || {};
+  const entries = Object.entries(rubric);
+  const half = Math.ceil(entries.length/2);
+  const cols = [entries.slice(0,half), entries.slice(half)];
+  cols.forEach(col => {
+    const colDiv = document.createElement('div');
+    col.forEach(([name,val]) => {
+      const box = document.createElement('div');
+      box.style.marginBottom = '10px';
+      box.innerHTML = `<div style="display:flex;justify-content:space-between">
+          <div>${name}</div><div>${val}</div></div>
+        <div class="bar"><span style="width:${Math.max(0,Math.min(10,Number(val)))*10}%"></span></div>`;
+      colDiv.appendChild(box);
+    });
+    grid.appendChild(colDiv);
+  });
+  root.appendChild(grid);
 
-function scoreColor(s){ if(s>=8.5) return 'bg-emerald-600'; if(s>=7.5) return 'bg-green-600'; if(s>=6.0) return 'bg-amber-600'; return 'bg-rose-600'; }
-function badgeText(dec){ return ({"COMPRAR":["Comprar","bg-emerald-100 text-emerald-700"],"CONSIDERAR_ALTO":["Considerar alto","bg-green-100 text-green-700"],"CONSIDERAR_BAJO":["Considerar bajo","bg-amber-100 text-amber-800"],"NO_COMPRAR":["No comprar","bg-rose-100 text-rose-700"]}[dec] || [dec,'bg-gray-100 text-gray-700']); }
-function donutSVG(value){ const max=10, pct=(value/max)*100; const r=40, len=2*Math.PI*r, off=len*(1-pct/100);
-  return `<svg viewBox="0 0 88 88" class="w-28 h-28"><circle cx="44" cy="44" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="8"/><circle cx="44" cy="44" r="${r}" fill="none" stroke="currentColor" stroke-width="8" stroke-dasharray="${len}" stroke-dashoffset="${off}" stroke-linecap="round" transform="rotate(-90 44 44)"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="fill-gray-800" font-size="18" font-weight="700">${Number(value).toFixed(1)}</text></svg>`; }
-function metricBar(name,val){ const pct = (val/10)*100; return `<div><div class="flex justify-between text-xs mb-1"><span>${name}</span><span>${val}</span></div><div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-2 ${scoreColor(val)}" style="width:${pct}%"></div></div></div>`; }
-function chip(text,classes){ return `<span class="px-2 py-1 text-xs rounded-full ${classes}">${text}</span>`; }
-
-function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
-function isAndroid(){ return /Android/.test(navigator.userAgent); }
-
-
-function openScanner(category){
-  const returnUrl = encodeURIComponent(window.location.origin + "/static/index.html");
-  const params = `?category=${encodeURIComponent(category)}&return=${returnUrl}`;
-  if (isIOS()){
-    const url = "ganadobravo://scan" + params;
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    setTimeout(()=>{ try{ document.body.removeChild(iframe); }catch(e){} }, 2000);
-  } else if (isAndroid()){
-    const intent = `intent://scan${params}#Intent;scheme=ganadobravo;package=com.ganadobravo.scanner;end`;
-    window.location.href = intent;
-  }
-}
-
-async function probeScannerSupport(){
-  const scanBtn = document.getElementById('scanNowBtn');
-  const btn2D = document.getElementById('btn2D');
-  if (scanBtn) scanBtn.classList.add('hidden');
-  if (btn2D) btn2D.classList.add('hidden');
-  if (!(isIOS() || isAndroid())){
-    notice.textContent = 'Tu teléfono no soporta escáner 3D.';
-    notice.classList.remove('hidden');
-    if (btn2D) btn2D.classList.remove('hidden');
-    return false;
-  }
-  let supported = false;
-  const onHide = () => { if (document.hidden) supported = true; };
-  document.addEventListener('visibilitychange', onHide, { once: true });
-  try{
-    if (isIOS()){
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = "ganadobravo://ping";
-      document.body.appendChild(iframe);
-      setTimeout(()=>{ try{ document.body.removeChild(iframe); }catch(e){} }, 1200);
-    } else if (isAndroid()){
-      window.location.href = "intent://ping#Intent;scheme=ganadobravo;package=com.ganadobravo.scanner;end";
-    }
-  }catch(e){}
-  await new Promise(r=>setTimeout(r, 1300));
-  document.removeEventListener('visibilitychange', onHide);
-  if (supported){
-    if (scanBtn) scanBtn.classList.remove('hidden');
-    notice.classList.add('hidden');
-    return true;
-  } else {
-    notice.textContent = 'Tu teléfono no soporta escáner 3D.';
-    notice.classList.remove('hidden');
-    if (btn2D) btn2D.classList.remove('hidden');
-    return false;
-  }
-}
-
-proToggle.addEventListener('change', async () => {
-  proFields.classList.toggle('hidden', !proToggle.checked);
-  proHidden.value = proToggle.checked ? '1' : '';
-  if (proToggle.checked){
-    await probeScannerSupport();
-  } else {
-    notice.classList.add('hidden');
-    const scanBtn = document.getElementById('scanNowBtn');
-    const btn2D = document.getElementById('btn2D');
-    if (scanBtn) scanBtn.classList.add('hidden');
-    if (btn2D) btn2D.classList.add('hidden');
-  }
-});
-
-document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
-  const category = document.querySelector('select[name="category"]').value;
-  openScanner(category);
-});
-
-document.getElementById('btn2D')?.addEventListener('click', ()=>{
-  document.querySelector('input[name="file"]').click();
-});
-
-function renderViz(data,imgURL){
-  const v = document.getElementById('viz'); v.innerHTML='';
-  const [label,cls] = badgeText(data.decision?.decision_level||''); const score = data.decision?.global_score||0;
-  const mode = data.mode==='pro' ? chip('Pro (Depth/LiDAR)','bg-indigo-100 text-indigo-700') : chip('Standard','bg-gray-100 text-gray-700');
-  const head = document.createElement('div'); head.className='bg-white rounded-2xl shadow p-4 flex items-center gap-4';
-  head.innerHTML = `<img src="${imgURL}" class="w-24 h-24 object-cover rounded-xl border"/><div class="flex-1"><div class="flex items-center gap-2 mb-1"><span class="text-sm uppercase tracking-wide text-gray-500">${data.category}</span> ${mode} <span class="px-2 py-1 text-xs rounded ${cls}">${label}</span></div><div class="text-sm text-gray-700">${data.decision?.decision_text||''}</div></div><div class="text-gray-700" style="color:inherit;">${donutSVG(score)}</div>`;
-  v.appendChild(head);
-  const met = document.createElement('div'); met.className = 'bg-white rounded-2xl shadow p-4'; met.innerHTML = '<div class="font-semibold mb-3">Métricas morfológicas</div>';
-  const grid = document.createElement('div'); grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
-  RUBRIC_ORDER.forEach((k)=>{ const val = Number(data.rubric?.[k] ?? 0); grid.innerHTML += metricBar(k, val); });
-  met.appendChild(grid); v.appendChild(met);
-  const hb = document.createElement('div'); hb.className='bg-white rounded-2xl shadow p-4 grid sm:grid-cols-2 gap-4';
-  const flags = (data.health?.flags||[]);
-  hb.innerHTML = `<div><div class="font-semibold mb-2">Salud</div><div class="flex flex-wrap gap-2 mb-2">${flags.length? flags.map(f=>chip(f,'bg-emerald-100 text-emerald-700')).join(''): chip('Sin banderas','bg-gray-100 text-gray-700')}</div><div class="text-sm text-gray-700">${data.health?.notes||''}</div></div><div><div class="font-semibold mb-2">Raza (estimada)</div><div class="flex items-center gap-2">${chip(data.breed?.guess||'—','bg-sky-100 text-sky-700')}<span class="text-xs text-gray-600">conf: ${(Number(data.breed?.confidence||0)*100).toFixed(0)}%</span></div></div>`;
-  v.appendChild(hb);
-  if(data.lidar_metrics && !data.lidar_metrics.error){
-    const lm = document.createElement('div'); lm.className='bg-white rounded-2xl shadow p-4'; lm.innerHTML = '<div class="font-semibold mb-3">Métricas 3D</div>';
-    const tbl = document.createElement('div'); tbl.className='grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm';
-    Object.entries(data.lidar_metrics).forEach(([k,val])=>{ if(typeof val === 'object') return; tbl.innerHTML += `<div class="flex justify-between"><span class="text-gray-600">${k}</span><span class="font-medium">${Number.isFinite(val)? val: '—'}</span></div>`; });
-    lm.appendChild(tbl); v.appendChild(lm);
-  }
+  const row = document.createElement('div'); row.className='row2 mt';
+  const health = document.createElement('div'); health.className='card'; health.style.padding='12px';
+  const breed  = document.createElement('div'); breed.className='card'; breed.style.padding='12px';
+  health.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Salud</div>
+    <div style="color:var(--muted)">${(data.health?.flags?.length? data.health.flags.join(', ') : 'Sin banderas')}</div>`;
+  breed.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Raza (estimada)</div>
+    <div style="color:var(--muted)">${data.breed?.guess || '—'} — conf: ${(data.breed?.confidence??0)*100|0}%</div>`;
+  row.appendChild(health); row.appendChild(breed);
+  root.appendChild(row);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -201,86 +128,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const spinner = document.getElementById('spinner');
   const out = document.getElementById('out');
   const errorP = document.getElementById('error');
-  const notice = document.getElementById('notice');
+  const overlay = document.getElementById('busyOverlay');
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener('submit', async function onSubmit(e){
     e.preventDefault();
-    errorP.classList.add('hidden'); notice.classList.add('hidden');
-    out.textContent = '';
+    errorP.classList.add('hidden'); out.textContent = '{}';
+    overlay.classList.add('show');
     btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
-    try {
-      const fd = new FormData(form);
-      const fileIn = form.querySelector('input[name="file"]');
-      const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
-      const resp = await fetch(form.action, { method: 'POST', body: fd });
+    const fd = new FormData(form);
+    try{
+      const f = document.getElementById('file').files[0];
+      const imgPreviewURL = f ? URL.createObjectURL(f) : null;
+      const resp = await fetch(form.action, { method:'POST', body: fd });
       const txt = await resp.text();
-      let data = null;
-      try { data = JSON.parse(txt); } catch(_) {}
-      if (!resp.ok) { throw new Error((data && (data.error||data.detail)) ? (data.error + (data.detail? ': '+data.detail:'')) : ('HTTP '+resp.status)); }
-      if (!data) { throw new Error('Respuesta no-JSON'); }
-      if (data.error) { throw new Error(data.error + (data.detail? ': '+data.detail:'')); }
+      let data = null; try{ data = JSON.parse(txt); }catch(_){}
+      if(!resp.ok){ throw new Error((data && (data.error||data.detail)) ? (data.error + (data.detail?': '+data.detail:'')) : ('HTTP '+resp.status)); }
+      if(!data) throw new Error('Respuesta no-JSON');
+      if(data.error) throw new Error(data.error + (data.detail?': '+data.detail:''));
       out.textContent = JSON.stringify(data, null, 2);
-      if (imgPreviewURL) { renderViz(data, imgPreviewURL); }
-    } catch (err) {
-      errorP.textContent = (err && err.message) ? err.message : String(err);
+      renderViz(data, imgPreviewURL);
+    }catch(err){
+      console.error(err);
+      errorP.textContent = err?.message || String(err);
       errorP.classList.remove('hidden');
-    } finally {
+      try{ form.removeEventListener('submit', onSubmit); form.submit(); }catch(_){}
+    }finally{
+      overlay.classList.remove('show');
       btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
     }
   });
 });
-\n    } catch(_){} document.getElementById('busyOverlay').classList.remove('hidden'); } catch(_) {}
-  e.preventDefault();
-  errorP.classList.add('hidden'); notice.classList.add('hidden');
-  out.textContent = '';
-  btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...'; document.getElementById('busyOverlay').classList.remove('hidden');
-  const fd = new FormData(form);
-  const fileIn = form.querySelector('input[name="file"]');
-  const imgPreviewURL = fileIn.files && fileIn.files[0] ? URL.createObjectURL(fileIn.files[0]) : null;
-  try {\n    // Fallback: if the browser posts into the hidden iframe (e.g., JS blocked), parse its response when it loads\n    try {\n      uploadFrame?.addEventListener('load', ()=>{\n        try {\n          const doc = uploadFrame.contentDocument || uploadFrame.contentWindow?.document;\n          const txt = doc && doc.body ? (doc.body.innerText || doc.body.textContent) : '';\n          if (txt) {\n            try { processApiResponseText(txt, null); document.getElementById('busyOverlay').classList.add('hidden'); } catch(err) { errorP.textContent = err.message; errorP.classList.remove('hidden'); }\n          }\n        } catch(_){}\n      }, { once: true });\n    } catch(_){}
-    const res = await fetch(form.action, { method: 'POST', body: fd });
-    const txt = await res.text(); let data = null;
-    try {\n    // Fallback: if the browser posts into the hidden iframe (e.g., JS blocked), parse its response when it loads\n    try {\n      uploadFrame?.addEventListener('load', ()=>{\n        try {\n          const doc = uploadFrame.contentDocument || uploadFrame.contentWindow?.document;\n          const txt = doc && doc.body ? (doc.body.innerText || doc.body.textContent) : '';\n          if (txt) {\n            try { processApiResponseText(txt, null); document.getElementById('busyOverlay').classList.add('hidden'); } catch(err) { errorP.textContent = err.message; errorP.classList.remove('hidden'); }\n          }\n        } catch(_){}\n      }, { once: true });\n    } catch(_){} data = JSON.parse(txt); } catch(_) {}
-    if (!res.ok) {
-      if (data && (data.error || data.detail)) throw new Error((data.error||'error') + (data.detail? ': '+data.detail:''));
-      throw new Error(txt || ('HTTP '+res.status));
-    }
-    if (!data) throw new Error('Respuesta no-JSON');
-    if (data.error) throw new Error((data.error||'error') + (data.detail? ': '+data.detail:''));
-    out.textContent = JSON.stringify(data, null, 2);
-    if(imgPreviewURL) renderViz(data, imgPreviewURL);
-  } catch (err) {
-    errorP.textContent = (err && err.message) ? err.message : String(err);
-    try { document.getElementById('busyOverlay').classList.add('hidden'); } catch(_) {}
-    errorP.classList.remove('hidden');
-  } finally {
-    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar'; document.getElementById('busyOverlay').classList.add('hidden');
-  }
-});
-    const txt = await res.text(); let data;
-    try {\n    // Fallback: if the browser posts into the hidden iframe (e.g., JS blocked), parse its response when it loads\n    try {\n      uploadFrame?.addEventListener('load', ()=>{\n        try {\n          const doc = uploadFrame.contentDocument || uploadFrame.contentWindow?.document;\n          const txt = doc && doc.body ? (doc.body.innerText || doc.body.textContent) : '';\n          if (txt) {\n            try { processApiResponseText(txt, null); document.getElementById('busyOverlay').classList.add('hidden'); } catch(err) { errorP.textContent = err.message; errorP.classList.remove('hidden'); }\n          }\n        } catch(_){}\n      }, { once: true });\n    } catch(_){} data = JSON.parse(txt); } catch { throw new Error(txt || 'Respuesta no-JSON'); }
-    if (!res.ok || data.error) throw new Error(data.error || 'Error desconocido');
-    out.textContent = JSON.stringify(data, null, 2);
-    if(imgPreviewURL) renderViz(data, imgPreviewURL);
-  } catch (err) {
-    errorP.textContent = (err && err.message) ? err.message : String(err);
-    try { document.getElementById('busyOverlay').classList.add('hidden'); } catch(_) {}
-    errorP.classList.remove('hidden');
-  } finally {
-    btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar'; document.getElementById('busyOverlay').classList.add('hidden');
-  }
-});
 </script>
-
-  <div id="busyOverlay" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-xl p-6 flex items-center gap-3">
-      <svg class="animate-spin h-6 w-6 text-gray-800" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-      </svg>
-      <div class="font-semibold">Evaluando…</div>
-    </div>
-  </div>
-
 </body>
 </html>
