@@ -27,7 +27,9 @@ function openScanner(category){
     // Fallback to App Store/Instruction after timeout
     setTimeout(()=>{
       if (Date.now()-t < 1800){
-        alert("Si no se abrió la app, instala o abre GanadoBravo Scan en tu iPhone. También puedes usar Polycam/Scaniverse y subir el archivo 3D.");
+        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
+document.getElementById('notice').classList.remove('hidden');
+document.querySelector('input[name="file"]').click();
       }
       document.body.removeChild(iframe);
     }, 1500);
@@ -39,7 +41,9 @@ function openScanner(category){
     opened = true;
     setTimeout(()=>{
       if (Date.now()-t < 1800){
-        alert("Si no se abrió la app, instálala desde Play Store o usa fotogrametría externa y sube el archivo 3D.");
+        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
+document.getElementById('notice').classList.remove('hidden');
+document.querySelector('input[name="file"]').click();
       }
     }, 1500);
   } else {
@@ -80,7 +84,7 @@ document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
     </select>
 
     <label class="block text-sm font-semibold">Imagen del animal</label>
-    <input type="file" name="file" accept="image/*" required class="block w-full text-sm border rounded-lg p-2 bg-gray-50">
+    <input type="file" name="file" accept="image/*" capture="environment" required class="block w-full text-sm border rounded-lg p-2 bg-gray-50">
 
     <label class="flex items-center gap-2 mt-2">
       <input type="checkbox" id="proToggle" class="h-4 w-4">
@@ -101,6 +105,7 @@ document.getElementById('scanNowBtn')?.addEventListener('click', ()=>{
     </button>
 
     <p id="error" class="text-red-600 text-sm hidden"></p>
+<div id="notice" class="hidden w-full max-w-md mt-2 text-sm bg-amber-50 text-amber-900 border border-amber-200 rounded-lg p-2"></div>
   </form>
 
   <div id="viz" class="mt-6 w-full max-w-3xl grid gap-4"></div>
@@ -279,7 +284,9 @@ function openScanner(category){
     // Fallback to App Store/Instruction after timeout
     setTimeout(()=>{
       if (Date.now()-t < 1800){
-        alert("Si no se abrió la app, instala o abre GanadoBravo Scan en tu iPhone. También puedes usar Polycam/Scaniverse y subir el archivo 3D.");
+        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
+document.getElementById('notice').classList.remove('hidden');
+document.querySelector('input[name="file"]').click();
       }
       document.body.removeChild(iframe);
     }, 1500);
@@ -291,7 +298,9 @@ function openScanner(category){
     opened = true;
     setTimeout(()=>{
       if (Date.now()-t < 1800){
-        alert("Si no se abrió la app, instálala desde Play Store o usa fotogrametría externa y sube el archivo 3D.");
+        document.getElementById('notice').textContent = 'No se pudo abrir el escáner 3D en este dispositivo. Abrimos la cámara para evaluar en 2D y puedes subir un 3D si lo tienes.';
+document.getElementById('notice').classList.remove('hidden');
+document.querySelector('input[name="file"]').click();
       }
     }, 1500);
   } else {
