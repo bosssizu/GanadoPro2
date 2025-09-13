@@ -54,7 +54,6 @@ CATEGORY_WEIGHTS = {
         "Inserción de cola": 0.04, "Balance anterior-posterior": 0.06
     }
 }
-}
 CATEGORY_OFFSETS = {"levante": 0.4, "vaca flaca": 0.8, "engorde": -0.3}
 
 def weighted_score(rubric: dict, category: str) -> float:
