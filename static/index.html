@@ -23,8 +23,8 @@
     .tag{display:inline-block;background:#eef2ff;color:#1e40af;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
     .muted{color:var(--muted)}
     .table{width:100%;border-collapse:collapse}
-    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:left}
-    .scorePill{display:inline-block;padding:2px 10px;border-radius:999px;color:#fff;font-weight:800}
+    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:left;vertical-align:middle}
+    .scorePill{min-width:36px;text-align:center;display:inline-block;padding:2px 10px;border-radius:999px;color:#fff;font-weight:800}
     .chip{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;margin:4px 6px 0 0;font-size:12px}
     .chip.ok{background:#ecfdf5;border-color:#bbf7d0;color:#065f46}
     .chip.bad{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
@@ -36,6 +36,19 @@
     .spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     .warn{background:#fff7ed;border:1px dashed #f59e0b;color:#7c2d12;padding:10px;border-radius:12px}
+
+    /* NUEVO: badge grande para la consideración */
+    .badgeLg{display:inline-block;padding:6px 12px;border-radius:999px;font-weight:800;font-size:14px}
+    .bGreen{background:#ecfccb;color:#166534}
+    .bAmber{background:#fef9c3;color:#854d0e}
+    .bRed{background:#fee2e2;color:#7f1d1d}
+
+    /* NUEVO: barra de score con número */
+    .meter{position:relative;height:14px;background:#f1f5f9;border-radius:9999px;overflow:hidden}
+    .meterFill{position:absolute;inset:0;width:0;border-radius:9999px;transition:width .6s ease}
+    .meterNum{position:absolute;top:50%;transform:translateY(-50%);background:#fff;border:2px solid;border-radius:999px;
+      padding:0 8px;height:22px;line-height:18px;font-weight:800;font-size:12px}
+    td.scoreTd{min-width:180px}
   </style>
 </head>
 <body>
@@ -95,21 +108,50 @@
 <script>
 function supports3D(){ const ua=navigator.userAgent||''; const i=/iPhone|iPad/i.test(ua); const a=/Android/i.test(ua); const xr='xr' in navigator; const motion='DeviceMotionEvent' in window; return (i&&motion)||(a&&xr); }
 function scoreColor(v){ if(v<5) return '#ef4444'; if(v<6.5) return '#f59e0b'; return '#16a34a'; }
-function gaugeHTML(score){
-  const deg = Math.max(0, Math.min(360, (score/10)*360));
-  return `<div class="gauge" style="background:conic-gradient(#16a34a ${deg}deg, #e5e7eb ${deg}deg 360deg)"><div>${score.toFixed(1)}</div></div>`;
+
+// NUEVO: estilo de decisión y gauge del mismo color
+function decisionStyle(level){
+  const L = (level||"").toUpperCase();
+  if (L === "DESCARTAR") return {text:"descartar", cls:"badgeLg bRed", col:"#ef4444"};
+  if (L === "CONSIDERAR_BAJO") return {text:"considerar bajo", cls:"badgeLg bAmber", col:"#f59e0b"};
+  return {text:"considerar alto", cls:"badgeLg bGreen", col:"#16a34a"};
 }
+function gaugeHTML(score, color){
+  const deg = Math.max(0, Math.min(360, (score/10)*360));
+  return `<div class="gauge" style="background:conic-gradient(${color} ${deg}deg, #e5e7eb ${deg}deg 360deg)"><div>${score.toFixed(1)}</div></div>`;
+}
+
+// NUEVO: barra de score
+function scoreBarHTML(v){
+  const c = scoreColor(v);
+  const pct = Math.max(0, Math.min(100, v*10)); // 0–10 -> 0–100%
+  const left = `calc(${pct}% - 16px)`;
+  return `
+    <div class="meter">
+      <div class="meterFill" style="width:${pct}%; background:${c}"></div>
+      <div class="meterNum" style="left:${left}; border-color:${c}; color:${c}">${v}</div>
+    </div>
+  `;
+}
+
 function renderViz(data, imgURL){
   const root = document.getElementById('viz'); root.classList.remove('hidden'); root.innerHTML = "";
   const header = document.createElement('div'); header.style.display='flex'; header.style.alignItems='center'; header.style.justifyContent='space-between'; header.style.gap='12px';
   const left = document.createElement('div'); left.style.display='flex'; left.style.gap='12px'; left.style.alignItems='center';
   const img = document.createElement('img'); img.src=imgURL||''; img.width=90; img.height=70; img.style.objectFit='cover'; img.style.borderRadius='12px'; img.style.background='#eee';
-  const title = document.createElement('div'); title.innerHTML=`<div style="font-size:18px;font-weight:800;text-transform:uppercase">${(data.category||'').replace('_',' ')}</div>
-    <div><span class="tag">${data.mode||'standard'}</span>
-    <span class="tag" style="background:#ecfccb;color:#166534;margin-left:6px">${(data.decision?.decision_level||'').replace('_',' ').toLowerCase()}</span></div>
+
+  const d = decisionStyle(data.decision?.decision_level);
+  const title = document.createElement('div'); 
+  title.innerHTML = `
+    <div style="font-size:18px;font-weight:800;text-transform:uppercase">${(data.category||'').replace('_',' ')}</div>
+    <div>
+      <span class="tag">${data.mode||'standard'}</span>
+      <span class="${d.cls}" style="margin-left:6px">${d.text}</span>
+    </div>
     <div class="muted">${data.decision?.decision_text||''}</div>`;
+
   left.appendChild(img); left.appendChild(title);
-  const right = document.createElement('div'); right.innerHTML = gaugeHTML(Number(data.decision?.global_score||0));
+  const right = document.createElement('div'); right.innerHTML = gaugeHTML(Number(data.decision?.global_score||0), d.col);
   header.appendChild(left); header.appendChild(right); root.appendChild(header);
 
   const rubric = data.rubric || {}; const notes = data.rubric_notes || {};
@@ -118,9 +160,12 @@ function renderViz(data, imgURL){
   table.innerHTML = "<thead><tr><th>Métrica</th><th>Score</th><th>Obs</th></tr></thead>";
   const tb = document.createElement('tbody');
   order.forEach(k=>{
-    const v = Number(rubric[k] ?? 0); const c = scoreColor(v);
+    const v = Number(rubric[k] ?? 0);
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${k}</td><td><span class="scorePill" style="background:${c}">${v}</span></td><td class="muted">${notes[k]||''}</td>`;
+    tr.innerHTML = `
+      <td>${k}</td>
+      <td class="scoreTd">${scoreBarHTML(v)}</td>
+      <td class="muted">${notes[k]||''}</td>`;
     tb.appendChild(tr);
   });
   table.appendChild(tb); root.appendChild(table);
