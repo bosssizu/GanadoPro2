@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>GanadoBravo — Evaluación IA</title>
+  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.16</span></title>
   <style>
     :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
@@ -39,7 +39,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.15</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.16</span> <span class="tag" style="margin-left:8px">v4.3.16</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -73,7 +73,41 @@
           </div>
           <input type="hidden" name="pro" id="proHidden" value="0" />
         </div>
-        <script>(function(){try{var c=document.getElementById('pro');var p=document.getElementById('proPanel');if(c&&p){p.style.display=c.checked?'block':'none';}}catch(e){}})();</script>
+        <script>(function(){try{var c=document.getElementById('pro');var p=document.getElementById('proPanel');if(c&&p){p.style.display=c.checked?'block':'none';}}catch(e){}})();
+function tryOpenChainWithStore(schemes, storeId){
+  // strategies
+  const openers = [
+    (u)=>{ try{ window.location.href = u; }catch(_){} },
+    (u)=>{ try{ window.open(u, '_top'); }catch(_){} },
+    (u)=>{ try{ const a=document.createElement('a'); a.href=u; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); }catch(_){} },
+  ];
+  let i=0, s=0;
+  const start = Date.now();
+  let switched = false;
+  function onHide(){ switched = true; cleanup(); }
+  function cleanup(){
+    document.removeEventListener('visibilitychange', onHide, {once:true});
+    document.removeEventListener('pagehide', onHide, {once:true});
+  }
+  document.addEventListener('visibilitychange', onHide, {once:true});
+  document.addEventListener('pagehide', onHide, {once:true});
+  function attempt(){
+    if (switched) return;
+    if (i < schemes.length){
+      const url = schemes[i++];
+      openers[s%openers.length](url); s++;
+      setTimeout(attempt, 700);
+      return;
+    }
+    // fallback: abrir la ficha directa en App Store (si está instalada, verás "Abrir")
+    const itms = 'itms-apps://itunes.apple.com/app/id'+storeId;
+    try{ window.location.href = itms; }catch(_){}
+    cleanup();
+  }
+  attempt();
+}
+
+</script>
 
         <button id="submitBtn" type="submit" class="mt">
           <span id="btnText">Evaluar</span>
@@ -296,8 +330,8 @@ function tryDeepLinkChain(schemes){
     setTimeout(()=>{ try{document.body.removeChild(iframe)}catch(_){}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
   }
   if(scanBtn){ scanBtn.addEventListener('click',()=>{ openModal(); }); }
-  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLinkChain(['polycam://scan','polycam://']); }); }
-  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLinkChain(['scaniverse://scan','scaniverse://']); }); }
+  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; tryOpenChainWithStore(['polycam://scan','polycam://'], '1532482376'); }); }
+  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; tryOpenChainWithStore(['scaniverse://scan','scaniverse://'], '1541433223'); }); }
 
   applyProState();
 
@@ -326,6 +360,40 @@ function tryDeepLinkChain(schemes){
     }finally{ overlay.classList.remove('show'); btn.disabled=false; spinner.classList.add('hidden'); btnText.textContent='Evaluar'; }
   });
 });
+
+function tryOpenChainWithStore(schemes, storeId){
+  // strategies
+  const openers = [
+    (u)=>{ try{ window.location.href = u; }catch(_){} },
+    (u)=>{ try{ window.open(u, '_top'); }catch(_){} },
+    (u)=>{ try{ const a=document.createElement('a'); a.href=u; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); }catch(_){} },
+  ];
+  let i=0, s=0;
+  const start = Date.now();
+  let switched = false;
+  function onHide(){ switched = true; cleanup(); }
+  function cleanup(){
+    document.removeEventListener('visibilitychange', onHide, {once:true});
+    document.removeEventListener('pagehide', onHide, {once:true});
+  }
+  document.addEventListener('visibilitychange', onHide, {once:true});
+  document.addEventListener('pagehide', onHide, {once:true});
+  function attempt(){
+    if (switched) return;
+    if (i < schemes.length){
+      const url = schemes[i++];
+      openers[s%openers.length](url); s++;
+      setTimeout(attempt, 700);
+      return;
+    }
+    // fallback: abrir la ficha directa en App Store (si está instalada, verás "Abrir")
+    const itms = 'itms-apps://itunes.apple.com/app/id'+storeId;
+    try{ window.location.href = itms; }catch(_){}
+    cleanup();
+  }
+  attempt();
+}
+
 </script>
 </body>
 </html>
