@@ -1,1 +1,1 @@
-GanadoBravo v4.3.4 — STRICT rubric retry with JSON Schema to avoid zeros; health chips with encontrada/descartada.
+GanadoBravo v4.3.7 — Pro mode con botón 'Usar cámara 2D' y selector para app 3D.

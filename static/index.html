@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>GanadoBravo — Evaluación IA</title>
   <style>
-    :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280;--ok:#16a34a;--warn:#f59e0b;--bad:#ef4444;--ring:#111;}
+    :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
     .container{max-width:980px;margin:24px auto;padding:16px}
     .card{background:var(--card);border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.06);padding:16px}
@@ -16,39 +16,21 @@
     button[disabled]{opacity:.5;cursor:not-allowed}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .mt{margin-top:16px}
-    .hidden{display:none!important}
-    .error{color:#b91c1c;margin-top:12px;font-weight:600}
-    pre{background:#0b1020;color:#e5e7eb;padding:12px;border-radius:12px;overflow:auto;max-height:300px}
+    .mt{margin-top:16px}.hidden{display:none!important}.muted{color:var(--muted)}
+    .table{width:100%;border-collapse:collapse}.table th,.table td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:left;vertical-align:middle}
     .tag{display:inline-block;background:#eef2ff;color:#1e40af;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
-    .muted{color:var(--muted)}
-    .table{width:100%;border-collapse:collapse}
-    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:left;vertical-align:middle}
-    .scorePill{min-width:36px;text-align:center;display:inline-block;padding:2px 10px;border-radius:999px;color:#fff;font-weight:800}
-    .chip{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;margin:4px 6px 0 0;font-size:12px}
-    .chip.ok{background:#ecfdf5;border-color:#bbf7d0;color:#065f46}
-    .chip.bad{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
-    .chip .sub{font-size:10px;opacity:.8;margin-left:6px}
-    .gauge{width:80px;height:80px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#16a34a 0deg, #16a34a 0deg, #e5e7eb 0deg)}
+    .gauge{width:80px;height:80px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#16a34a 0deg, #e5e7eb 0deg)}
     .gauge>div{background:#fff;border-radius:50%;width:58px;height:58px;display:grid;place-items:center;font-weight:900}
-    #busyOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:saturate(130%) blur(2px)}
-    #busyOverlay.show{display:flex}
-    .spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .warn{background:#fff7ed;border:1px dashed #f59e0b;color:#7c2d12;padding:10px;border-radius:12px}
-
-    /* NUEVO: badge grande para la consideración */
+    .chip{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;margin:4px 6px 0 0;font-size:12px}
+    .chip.ok{background:#ecfdf5;border-color:#bbf7d0;color:#065f46}.chip.bad{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}.chip .sub{font-size:10px;opacity:.8;margin-left:6px}
+    #busyOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50}
+    #busyOverlay.show{display:flex}.spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
     .badgeLg{display:inline-block;padding:6px 12px;border-radius:999px;font-weight:800;font-size:14px}
-    .bGreen{background:#ecfccb;color:#166534}
-    .bAmber{background:#fef9c3;color:#854d0e}
-    .bRed{background:#fee2e2;color:#7f1d1d}
-
-    /* NUEVO: barra de score con número */
-    .meter{position:relative;height:14px;background:#f1f5f9;border-radius:9999px;overflow:hidden}
-    .meterFill{position:absolute;inset:0;width:0;border-radius:9999px;transition:width .6s ease}
-    .meterNum{position:absolute;top:50%;transform:translateY(-50%);background:#fff;border:2px solid;border-radius:999px;
-      padding:0 8px;height:22px;line-height:18px;font-weight:800;font-size:12px}
-    td.scoreTd{min-width:180px}
+    .bGreen{background:#ecfccb;color:#166534}.bAmber{background:#fef9c3;color:#854d0e}.bRed{background:#fee2e2;color:#7f1d1d}
+    .meter{position:relative;height:14px;background:#f1f5f9;border-radius:9999px;overflow:hidden}.meterFill{position:absolute;inset:0;width:0;border-radius:9999px;transition:width .6s ease}.meterNum{position:absolute;top:50%;transform:translateY(-50%);background:#fff;border:2px solid;border-radius:999px;padding:0 8px;height:22px;line-height:18px;font-weight:800;font-size:12px}td.scoreTd{min-width:180px}
+    /* modal */
+    #scanModal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:60}
+    #scanModal.show{display:flex} #scanSheet{background:#fff;border-radius:16px;max-width:520px;width:92vw;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)} .scanRow{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px} .scanBtn{flex:1 1 160px;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#f8fafc;font-weight:800;cursor:pointer} .scanLink{display:inline-block;margin-top:10px;font-weight:700}
   </style>
 </head>
 <body>
@@ -76,10 +58,13 @@
           <label><input type="checkbox" id="pro" /> Pro mode (LiDAR/Depth)</label>
         </div>
         <div id="proPanel" class="hidden mt">
-          <div id="proUnsupported" class="warn hidden">Tu teléfono no soporta escáner 3D.</div>
+          <div id="proUnsupported" class="muted hidden">Tu teléfono no soporta escáner 3D desde el navegador. Puedes usar cámara 2D.</div>
           <div id="proControls" class="hidden">
-            <button type="button" id="scanBtn" style="margin-bottom:10px">Escanear ahora</button>
-            <div class="muted">Si no se abre, usa Polycam/Scaniverse y luego sube el archivo 3D por fuera (por ahora el análisis sigue siendo 2D).</div>
+            <div class="scanRow">
+              <button type="button" id="cam2dBtn" class="scanBtn">Usar cámara 2D ahora</button>
+              <button type="button" id="scanBtn" class="scanBtn">Escáner 3D (app)</button>
+            </div>
+            <div class="muted" style="margin-top:6px">A: cámara 2D directa. B: abrir app LiDAR para 3D (Polycam/Scaniverse).</div>
           </div>
           <input type="hidden" name="pro" id="proHidden" value="0" />
         </div>
@@ -88,7 +73,7 @@
           <span id="btnText">Evaluar</span>
           <span id="spinner" class="hidden"> ⏳</span>
         </button>
-        <p id="error" class="error hidden"></p>
+        <p id="error" class="muted hidden"></p>
       </form>
     </div>
 
@@ -101,6 +86,26 @@
     </div>
   </div>
 
+  <!-- Modal de apps 3D -->
+  <div id="scanModal">
+    <div id="scanSheet">
+      <div style="font-size:18px;font-weight:800;">Abrir escáner 3D</div>
+      <div class="muted" style="margin-top:6px">Elige una app LiDAR para escanear.</div>
+      <div class="scanRow">
+        <button class="scanBtn" id="openPolycam">Abrir Polycam</button>
+        <button class="scanBtn" id="openScaniverse">Abrir Scaniverse</button>
+      </div>
+      <div class="muted" style="margin-top:12px">¿No tienes ninguna? Instala una:</div>
+      <div class="scanRow">
+        <a class="scanBtn" href="https://apps.apple.com/search?term=polycam" target="_blank" rel="noopener">Instalar Polycam</a>
+        <a class="scanBtn" href="https://apps.apple.com/search?term=scaniverse" target="_blank" rel="noopener">Instalar Scaniverse</a>
+      </div>
+      <div style="text-align:right;margin-top:8px">
+        <a href="#" id="closeScanModal" class="scanLink">Cerrar</a>
+      </div>
+    </div>
+  </div>
+
   <div id="busyOverlay"><div style="background:#fff;border-radius:16px;padding:14px 16px;display:flex;gap:10px;align-items:center">
     <div class="spinner"></div><div style="font-weight:700">Evaluando…</div>
   </div></div>
@@ -108,147 +113,92 @@
 <script>
 function supports3D(){ const ua=navigator.userAgent||''; const i=/iPhone|iPad/i.test(ua); const a=/Android/i.test(ua); const xr='xr' in navigator; const motion='DeviceMotionEvent' in window; return (i&&motion)||(a&&xr); }
 function scoreColor(v){ if(v<5) return '#ef4444'; if(v<6.5) return '#f59e0b'; return '#16a34a'; }
-
-// NUEVO: estilo de decisión y gauge del mismo color
-function decisionStyle(level){
-  const L = (level||"").toUpperCase();
-  if (L === "DESCARTAR") return {text:"descartar", cls:"badgeLg bRed", col:"#ef4444"};
-  if (L === "CONSIDERAR_BAJO") return {text:"considerar bajo", cls:"badgeLg bAmber", col:"#f59e0b"};
-  return {text:"considerar alto", cls:"badgeLg bGreen", col:"#16a34a"};
-}
-function gaugeHTML(score, color){
-  const deg = Math.max(0, Math.min(360, (score/10)*360));
-  return `<div class="gauge" style="background:conic-gradient(${color} ${deg}deg, #e5e7eb ${deg}deg 360deg)"><div>${score.toFixed(1)}</div></div>`;
-}
-
-// NUEVO: barra de score
-function scoreBarHTML(v){
-  const c = scoreColor(v);
-  const pct = Math.max(0, Math.min(100, v*10)); // 0–10 -> 0–100%
-  const left = `calc(${pct}% - 16px)`;
-  return `
-    <div class="meter">
-      <div class="meterFill" style="width:${pct}%; background:${c}"></div>
-      <div class="meterNum" style="left:${left}; border-color:${c}; color:${c}">${v}</div>
-    </div>
-  `;
-}
+function decisionStyle(level){ const L=(level||'').toUpperCase(); if(L==='DESCARTAR')return{text:'descartar',cls:'badgeLg bRed',col:'#ef4444'}; if(L==='CONSIDERAR_BAJO')return{text:'considerar bajo',cls:'badgeLg bAmber',col:'#f59e0b'}; return{text:'considerar alto',cls:'badgeLg bGreen',col:'#16a34a'}; }
+function gaugeHTML(score, color){ const deg=Math.max(0,Math.min(360,(score/10)*360)); return `<div class="gauge" style="background:conic-gradient(${color} ${deg}deg, #e5e7eb ${deg}deg 360deg)"><div>${score.toFixed(1)}</div></div>`; }
+function scoreBarHTML(v){ const c=scoreColor(v); const pct=Math.max(0,Math.min(100,v*10)); const left=`calc(${pct}% - 16px)`; return `<div class="meter"><div class="meterFill" style="width:${pct}%; background:${c}"></div><div class="meterNum" style="left:${left}; border-color:${c}; color:${c}">${v}</div></div>`; }
 
 function renderViz(data, imgURL){
-  const root = document.getElementById('viz'); root.classList.remove('hidden'); root.innerHTML = "";
-  const header = document.createElement('div'); header.style.display='flex'; header.style.alignItems='center'; header.style.justifyContent='space-between'; header.style.gap='12px';
-  const left = document.createElement('div'); left.style.display='flex'; left.style.gap='12px'; left.style.alignItems='center';
-  const img = document.createElement('img'); img.src=imgURL||''; img.width=90; img.height=70; img.style.objectFit='cover'; img.style.borderRadius='12px'; img.style.background='#eee';
+  const root=document.getElementById('viz'); root.classList.remove('hidden'); root.innerHTML='';
+  const header=document.createElement('div'); header.style.display='flex'; header.style.alignItems='center'; header.style.justifyContent='space-between'; header.style.gap='12px';
+  const left=document.createElement('div'); left.style.display='flex'; left.style.gap='12px'; left.style.alignItems='center';
+  const img=document.createElement('img'); img.src=imgURL||''; img.width=90; img.height=70; img.style.objectFit='cover'; img.style.borderRadius='12px'; img.style.background='#eee';
 
-  const d = decisionStyle(data.decision?.decision_level);
-  const title = document.createElement('div'); 
-  title.innerHTML = `
+  const d=decisionStyle(data.decision?.decision_level);
+  const title=document.createElement('div');
+  title.innerHTML=`
     <div style="font-size:18px;font-weight:800;text-transform:uppercase">${(data.category||'').replace('_',' ')}</div>
-    <div>
-      <span class="tag">${data.mode||'standard'}</span>
-      <span class="${d.cls}" style="margin-left:6px">${d.text}</span>
-    </div>
+    <div><span class="tag">${data.mode||'standard'}</span><span class="${d.cls}" style="margin-left:6px">${d.text}</span></div>
     <div class="muted">${data.decision?.decision_text||''}</div>`;
-
   left.appendChild(img); left.appendChild(title);
-  const right = document.createElement('div'); right.innerHTML = gaugeHTML(Number(data.decision?.global_score||0), d.col);
+  const right=document.createElement('div'); right.innerHTML=gaugeHTML(Number(data.decision?.global_score||0), d.col);
   header.appendChild(left); header.appendChild(right); root.appendChild(header);
 
-  const rubric = data.rubric || {}; const notes = data.rubric_notes || {};
-  const order = ["Condición corporal (BCS)","Conformación general","Línea dorsal","Angulación costillar","Profundidad de pecho","Aplomos (patas)","Lomo","Grupo / muscling posterior","Balance anterior–posterior","Ancho torácico","Inserción de cola"];
-  const table = document.createElement('table'); table.className='table mt';
-  table.innerHTML = "<thead><tr><th>Métrica</th><th>Score</th><th>Obs</th></tr></thead>";
-  const tb = document.createElement('tbody');
-  order.forEach(k=>{
-    const v = Number(rubric[k] ?? 0);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${k}</td>
-      <td class="scoreTd">${scoreBarHTML(v)}</td>
-      <td class="muted">${notes[k]||''}</td>`;
-    tb.appendChild(tr);
-  });
+  const rubric=data.rubric||{}; const notes=data.rubric_notes||{};
+  const order=["Condición corporal (BCS)","Conformación general","Línea dorsal","Angulación costillar","Profundidad de pecho","Aplomos (patas)","Lomo","Grupo / muscling posterior","Balance anterior–posterior","Ancho torácico","Inserción de cola"];
+  const table=document.createElement('table'); table.className='table mt'; table.innerHTML="<thead><tr><th>Métrica</th><th>Score</th><th>Obs</th></tr></thead>";
+  const tb=document.createElement('tbody');
+  order.forEach(k=>{ const v=Number(rubric[k]??0); const tr=document.createElement('tr'); tr.innerHTML=`<td>${k}</td><td class="scoreTd">${scoreBarHTML(v)}</td><td class="muted">${notes[k]||''}</td>`; tb.appendChild(tr); });
   table.appendChild(tb); root.appendChild(table);
 
-  const row = document.createElement('div'); row.className='row2 mt';
-  const health = document.createElement('div'); health.className='card'; health.style.padding='12px';
-  const breed  = document.createElement('div'); breed.className='card'; breed.style.padding='12px';
-
-  const flags = (data.health?.flags||[]);
-  const names = ["lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis","diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"];
-  const chips = names.map(n=>{
-    const found = flags.includes(n);
-    const cls = found ? 'bad' : 'ok';
-    const label = n.replaceAll('_',' ');
-    const sub = found ? '— encontrada' : '— descartada';
-    return `<span class="chip ${cls}">${label}<span class="sub">${sub}</span></span>`;
-  }).join('');
-  health.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Salud</div>
-    <div>${chips}</div>
-    <div class="muted" style="margin-top:8px">${(data.health?.notes||'').trim()||'Sin comentario adicional.'}</div>`;
-
-  breed.innerHTML = `<div style="font-weight:800;margin-bottom:8px">Raza (estimada)</div>
-    <div class="muted">${data.breed?.guess || 'Indeterminado'} — conf: ${Math.round((data.breed?.confidence??0)*100)}%</div>`;
-
+  const row=document.createElement('div'); row.className='row2 mt';
+  const health=document.createElement('div'); health.className='card'; health.style.padding='12px';
+  const breed=document.createElement('div'); breed.className='card'; breed.style.padding='12px';
+  const flags=(data.health?.flags||[]);
+  const names=["lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis","diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"];
+  const chips=names.map(n=>{ const found=flags.includes(n); const cls=found?'bad':'ok'; const label=n.replaceAll('_',' '); const sub=found?'— encontrada':'— descartada'; return `<span class="chip ${cls}">${label}<span class="sub">${sub}</span></span>`; }).join('');
+  health.innerHTML=`<div style="font-weight:800;margin-bottom:8px">Salud</div><div>${chips}</div><div class="muted" style="margin-top:8px">${(data.health?.notes||'').trim()||'Sin comentario adicional.'}</div>`;
+  breed.innerHTML=`<div style="font-weight:800;margin-bottom:8px">Raza (estimada)</div><div class="muted">${data.breed?.guess||'Indeterminado'} — conf: ${Math.round((data.breed?.confidence??0)*100)}%</div>`;
   row.appendChild(health); row.appendChild(breed); root.appendChild(row);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('uploadForm');
-  const btn = document.getElementById('submitBtn');
-  const btnText = document.getElementById('btnText');
-  const spinner = document.getElementById('spinner');
-  const out = document.getElementById('out');
-  const errorP = document.getElementById('error');
-  const overlay = document.getElementById('busyOverlay');
+document.addEventListener('DOMContentLoaded',()=>{
+  const form=document.getElementById('uploadForm'); const btn=document.getElementById('submitBtn'); const btnText=document.getElementById('btnText'); const spinner=document.getElementById('spinner'); const out=document.getElementById('out'); const errorP=document.getElementById('error'); const overlay=document.getElementById('busyOverlay');
+  const proChk=document.getElementById('pro'); const proPanel=document.getElementById('proPanel'); const proHidden=document.getElementById('proHidden'); const proUnsupported=document.getElementById('proUnsupported'); const proControls=document.getElementById('proControls');
+  const scanBtn=document.getElementById('scanBtn'); const cam2dBtn=document.getElementById('cam2dBtn');
+  const scanModal=document.getElementById('scanModal'); const closeScan=document.getElementById('closeScanModal'); const openPoly=document.getElementById('openPolycam'); const openScani=document.getElementById('openScaniverse');
 
-  const proChk = document.getElementById('pro');
-  const proPanel = document.getElementById('proPanel');
-  const proHidden = document.getElementById('proHidden');
-  const proUnsupported = document.getElementById('proUnsupported');
-  const proControls = document.getElementById('proControls');
-  const scanBtn = document.getElementById('scanBtn');
-
-  proChk.addEventListener('change', () => {
+  proChk.addEventListener('change',()=>{
     proPanel.classList.toggle('hidden', !proChk.checked);
-    const ok3d = supports3D();
+    const ok3d=supports3D();
     proUnsupported.classList.toggle('hidden', ok3d);
-    proControls.classList.toggle('hidden', !ok3d);
-    proHidden.value = proChk.checked && ok3d ? "1" : "0";
+    proControls.classList.toggle('hidden', !ok3d && !proChk.checked ? true : false);
+    // por defecto, si pro está activo y no usamos 3D, deja pro=0 (cámara 2D)
+    proHidden.value="0";
   });
 
-  if (scanBtn){
-    scanBtn.addEventListener('click', () => {
-      window.location.href = "polycam://";
-      setTimeout(()=>{ alert("Si no se abrió tu app de escaneo, instala Polycam/Scaniverse y vuelve a intentar. (Mientras tanto, puedes evaluar en 2D)."); }, 1200);
+  function openModal(){ scanModal.classList.add('show'); }
+  function closeModal(e){ if(e) e.preventDefault(); scanModal.classList.remove('show'); }
+  if(closeScan){ closeScan.addEventListener('click', closeModal); }
+
+  if(cam2dBtn){
+    cam2dBtn.addEventListener('click',()=>{
+      proHidden.value="0"; // modo 2D
+      const fileInput=document.getElementById('file');
+      try{ fileInput.setAttribute('accept','image/*'); fileInput.setAttribute('capture','environment'); }catch(_){}
+      fileInput.click();
     });
   }
 
-  form.addEventListener('submit', async function onSubmit(e){
-    e.preventDefault();
-    errorP.classList.add('hidden'); out.textContent = '{}';
-    overlay.classList.add('show');
-    btn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Evaluando...';
-    const fd = new FormData(form);
+  function tryDeepLink(scheme, storeURL){
+    const iframe=document.createElement('iframe'); iframe.style.display='none'; iframe.src=scheme; document.body.appendChild(iframe);
+    const t=Date.now();
+    setTimeout(()=>{ try{document.body.removeChild(iframe)}except{}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
+  }
+  if(scanBtn){ scanBtn.addEventListener('click',()=>{ openModal(); }); }
+  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLink('polycam://','https://apps.apple.com/search?term=polycam'); }); }
+  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLink('scaniverse://','https://apps.apple.com/search?term=scaniverse'); }); }
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault(); errorP.classList.add('hidden'); out.textContent='{}'; overlay.classList.add('show'); btn.disabled=true; spinner.classList.remove('hidden'); btnText.textContent='Evaluando...';
+    const fd=new FormData(form);
     try{
-      const f = document.getElementById('file').files[0];
-      const imgPreviewURL = f ? URL.createObjectURL(f) : null;
-      const resp = await fetch(form.action, { method:'POST', body: fd });
-      const txt = await resp.text();
-      let data = null; try{ data = JSON.parse(txt); }catch(_){}
-      if(!resp.ok){ throw new Error((data && (data.error||data.detail)) ? (data.error + (data.detail?': '+data.detail:'')) : ('HTTP '+resp.status)); }
-      if(!data) throw new Error('Respuesta no-JSON');
-      if(data.error) throw new Error(data.error + (data.detail?': '+data.detail:''));
-      out.textContent = JSON.stringify(data, null, 2);
-      renderViz(data, imgPreviewURL);
-    }catch(err){
-      console.error(err);
-      errorP.textContent = err?.message || String(err);
-      errorP.classList.remove('hidden');
-    }finally{
-      overlay.classList.remove('show');
-      btn.disabled = false; spinner.classList.add('hidden'); btnText.textContent = 'Evaluar';
-    }
+      const f=document.getElementById('file').files[0]; const imgPreviewURL=f?URL.createObjectURL(f):null;
+      const resp=await fetch(form.action,{method:'POST',body:fd}); const txt=await resp.text(); let data=null; try{data=JSON.parse(txt)}catch(_){}
+      if(!resp.ok) throw new Error((data&&(data.error||data.detail))?(data.error+ (data.detail?': '+data.detail:'')):'HTTP '+resp.status);
+      if(!data) throw new Error('Respuesta no-JSON'); if(data.error) throw new Error(data.error+ (data.detail?': '+data.detail:''));
+      out.textContent=JSON.stringify(data,null,2); renderViz(data,imgPreviewURL);
+    }catch(err){ console.error(err); errorP.textContent=err?.message||String(err); errorP.classList.remove('hidden');
+    }finally{ overlay.classList.remove('show'); btn.disabled=false; spinner.classList.add('hidden'); btnText.textContent='Evaluar'; }
   });
 });
 </script>
