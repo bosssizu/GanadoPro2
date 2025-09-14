@@ -232,13 +232,23 @@ function tryDeepLink(scheme, storeURL){
 
     const iframe=document.createElement('iframe'); iframe.style.display='none'; iframe.src=scheme; document.body.appendChild(iframe);
     const t=Date.now();
-    setTimeout(()=>{ try{document.body.removeChild(iframe)}except{}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
+    setTimeout(()=>{ try{document.body.removeChild(iframe)}catch(_){}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
   }
   if(scanBtn){ scanBtn.addEventListener('click',()=>{ openModal(); }); }
   if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLink('polycam://','https://apps.apple.com/search?term=polycam'); }); }
   if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLink('scaniverse://','https://apps.apple.com/search?term=scaniverse'); }); }
 
   applyProState();
+
+  
+  // debug guard: if any JS error stopped earlier code, ensure pro panel toggles
+  function forceShowPro(){
+    const chk = document.getElementById('pro');
+    const panel = document.getElementById('proPanel');
+    if(!chk || !panel) return;
+    panel.classList.toggle('hidden', !chk.checked);
+  }
+  setTimeout(forceShowPro, 50);
 
   form.addEventListener('submit', async (e)=>{
     e.preventDefault(); errorP.classList.add('hidden'); out.textContent='{}'; overlay.classList.add('show'); btn.disabled=true; spinner.classList.remove('hidden'); btnText.textContent='Evaluando...';
