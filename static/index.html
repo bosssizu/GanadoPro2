@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.20</span></title>
+  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.21</span></title>
   <style>
     :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
@@ -45,7 +45,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.20</span> <span class="tag" style="margin-left:8px">v4.3.20</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.21</span> <span class="tag" style="margin-left:8px">v4.3.21</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -64,8 +64,12 @@
           </div>
         </div>
 
-        <div class="mt"><span class="tag">Pro mode</span> <span class="muted">— usa opciones 3D o la cámara 2D</span></div>
-        <div id="proPanel" class="mt" style="display:block">
+        <div class="mt"><input type="checkbox" id="pro" onchange="launchProScan(this)"><label for="pro" style="font-weight:700; margin-left:6px">Pro mode (auto escanear)</label></div>
+<div id="proPanel" class="mt" style="display:block">
+<div class="muted" style="margin-top:6px">
+Al activar <b>Pro mode</b> intento abrir el escáner nativo (si lo tienes instalado) y, si no es posible, abro la <b>cámara 2D</b> de inmediato.
+</div>
+
           <div id="proUnsupported" class="muted hidden">Tu teléfono no soporta escáner 3D desde el navegador. Puedes usar cámara 2D.</div>
           <div id="proControls">
             <div class="scanRow">
@@ -83,6 +87,44 @@
     if(sb){ sb.removeAttribute('disabled'); sb.style.opacity='1'; sb.style.pointerEvents='auto'; }
   }catch(e){}
 })();
+
+function launchProScan(chk){
+  try{
+    // Marcar Pro = 1 para backend (pero seguimos usando 2D si no hay app)
+    var proHidden = document.getElementById('proHidden'); if(proHidden) proHidden.value = chk && chk.checked ? '1' : '0';
+    if (!chk || !chk.checked){
+      return;
+    }
+    // Generar SID simple (timestamp + rand) por si la app nativa lo consume
+    var sid = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+    window.__gb_sid = sid;
+    var tried = false, switched = false;
+    const onHide = ()=>{ switched = true; cleanup(); };
+    function cleanup(){ document.removeEventListener('visibilitychange', onHide, {once:true}); document.removeEventListener('pagehide', onHide, {once:true}); }
+    document.addEventListener('visibilitychange', onHide, {once:true});
+    document.addEventListener('pagehide', onHide, {once:true});
+
+    // 1) Intento Universal Link (si instalas la app "GanadoBravo Scan" con Associated Domains)
+    const ulink = 'https://scan.ganadobravo.app/scan?sid='+encodeURIComponent(sid)+'&source=web';
+    try{ window.location.href = ulink; tried = true; }catch(_){}
+
+    // 2) En iOS puedes tener un Atajo llamado "Abrir GanadoBravo Scan"
+    setTimeout(()=>{ if(!switched){ try{ window.location.href = 'shortcuts://run-shortcut?name=Abrir%20GanadoBravo%20Scan'; }catch(_){} } }, 600);
+
+    // 3) Si en ~1.2s no se cambió de app, caemos a cámara 2D automáticamente
+    setTimeout(()=>{
+      if (!switched){
+        const f = document.getElementById('file');
+        if(f){ f.click(); }
+      }
+      cleanup();
+    }, 1200);
+  }catch(e){
+    // Último recurso: abrir cámara 2D
+    try{ const f = document.getElementById('file'); if(f){ f.click(); } }catch(_){}
+  }
+}
+
 </script>
 
         </div>
@@ -163,6 +205,44 @@ function /* removed */ tryOpenChainWithStore(schemes, storeId){
     }
   }catch(e){}
 })();
+
+
+function launchProScan(chk){
+  try{
+    // Marcar Pro = 1 para backend (pero seguimos usando 2D si no hay app)
+    var proHidden = document.getElementById('proHidden'); if(proHidden) proHidden.value = chk && chk.checked ? '1' : '0';
+    if (!chk || !chk.checked){
+      return;
+    }
+    // Generar SID simple (timestamp + rand) por si la app nativa lo consume
+    var sid = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+    window.__gb_sid = sid;
+    var tried = false, switched = false;
+    const onHide = ()=>{ switched = true; cleanup(); };
+    function cleanup(){ document.removeEventListener('visibilitychange', onHide, {once:true}); document.removeEventListener('pagehide', onHide, {once:true}); }
+    document.addEventListener('visibilitychange', onHide, {once:true});
+    document.addEventListener('pagehide', onHide, {once:true});
+
+    // 1) Intento Universal Link (si instalas la app "GanadoBravo Scan" con Associated Domains)
+    const ulink = 'https://scan.ganadobravo.app/scan?sid='+encodeURIComponent(sid)+'&source=web';
+    try{ window.location.href = ulink; tried = true; }catch(_){}
+
+    // 2) En iOS puedes tener un Atajo llamado "Abrir GanadoBravo Scan"
+    setTimeout(()=>{ if(!switched){ try{ window.location.href = 'shortcuts://run-shortcut?name=Abrir%20GanadoBravo%20Scan'; }catch(_){} } }, 600);
+
+    // 3) Si en ~1.2s no se cambió de app, caemos a cámara 2D automáticamente
+    setTimeout(()=>{
+      if (!switched){
+        const f = document.getElementById('file');
+        if(f){ f.click(); }
+      }
+      cleanup();
+    }, 1200);
+  }catch(e){
+    // Último recurso: abrir cámara 2D
+    try{ const f = document.getElementById('file'); if(f){ f.click(); } }catch(_){}
+  }
+}
 
 </script>
 
@@ -501,6 +581,44 @@ function /* removed */ tryOpenChainWithStore(schemes, storeId){
     }
   }catch(e){}
 })();
+
+
+function launchProScan(chk){
+  try{
+    // Marcar Pro = 1 para backend (pero seguimos usando 2D si no hay app)
+    var proHidden = document.getElementById('proHidden'); if(proHidden) proHidden.value = chk && chk.checked ? '1' : '0';
+    if (!chk || !chk.checked){
+      return;
+    }
+    // Generar SID simple (timestamp + rand) por si la app nativa lo consume
+    var sid = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+    window.__gb_sid = sid;
+    var tried = false, switched = false;
+    const onHide = ()=>{ switched = true; cleanup(); };
+    function cleanup(){ document.removeEventListener('visibilitychange', onHide, {once:true}); document.removeEventListener('pagehide', onHide, {once:true}); }
+    document.addEventListener('visibilitychange', onHide, {once:true});
+    document.addEventListener('pagehide', onHide, {once:true});
+
+    // 1) Intento Universal Link (si instalas la app "GanadoBravo Scan" con Associated Domains)
+    const ulink = 'https://scan.ganadobravo.app/scan?sid='+encodeURIComponent(sid)+'&source=web';
+    try{ window.location.href = ulink; tried = true; }catch(_){}
+
+    // 2) En iOS puedes tener un Atajo llamado "Abrir GanadoBravo Scan"
+    setTimeout(()=>{ if(!switched){ try{ window.location.href = 'shortcuts://run-shortcut?name=Abrir%20GanadoBravo%20Scan'; }catch(_){} } }, 600);
+
+    // 3) Si en ~1.2s no se cambió de app, caemos a cámara 2D automáticamente
+    setTimeout(()=>{
+      if (!switched){
+        const f = document.getElementById('file');
+        if(f){ f.click(); }
+      }
+      cleanup();
+    }, 1200);
+  }catch(e){
+    // Último recurso: abrir cámara 2D
+    try{ const f = document.getElementById('file'); if(f){ f.click(); } }catch(_){}
+  }
+}
 
 </script>
 </body>
