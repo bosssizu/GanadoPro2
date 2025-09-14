@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.20</span></title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    .container{max-width:980px;margin:24px auto;padding:16px}
+    .card{background:var(--card);border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.06);padding:16px}
+    h1{font-size:24px;margin:0 0 12px;text-align:center}
+    label{font-weight:600;display:block;margin:12px 0 6px}
+    select,input[type=file]{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+    button{width:100%;padding:14px 16px;border:0;border-radius:999px;background:#16a34a;color:#fff;font-weight:800;font-size:20px;cursor:pointer}
+    button[disabled]{opacity:1;cursor:pointer}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .mt{margin-top:16px}.hidden{display:none!important}.muted{color:var(--muted)}
+    .table{width:100%;border-collapse:collapse}.table th,.table td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:left;vertical-align:middle}
+    .tag{display:inline-block;background:#eef2ff;color:#1e40af;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .gauge{width:80px;height:80px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#16a34a 0deg, #e5e7eb 0deg)}
+    .gauge>div{background:#fff;border-radius:50%;width:58px;height:58px;display:grid;place-items:center;font-weight:900}
+    .chip{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;margin:4px 6px 0 0;font-size:12px}
+    .chip.ok{background:#ecfdf5;border-color:#bbf7d0;color:#065f46}.chip.bad{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}.chip .sub{font-size:10px;opacity:.8;margin-left:6px}
+    #busyOverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50}
+    #busyOverlay.show{display:flex}.spinner{width:24px;height:24px;border:3px solid #0003;border-top-color:#111;border-radius:50%;animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    .badgeLg{display:inline-block;padding:6px 12px;border-radius:999px;font-weight:800;font-size:14px}
+    .bGreen{background:#ecfccb;color:#166534}.bAmber{background:#fef9c3;color:#854d0e}.bRed{background:#fee2e2;color:#7f1d1d}
+    .meter{position:relative;height:14px;background:#f1f5f9;border-radius:9999px;overflow:hidden}.meterFill{position:absolute;inset:0;width:0;border-radius:9999px;transition:width .6s ease}.meterNum{position:absolute;top:50%;transform:translateY(-50%);background:#fff;border:2px solid;border-radius:999px;padding:0 8px;height:22px;line-height:18px;font-weight:800;font-size:12px}td.scoreTd{min-width:180px}
+    /* modal */
+    #scanModal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:60}
+    #scanModal.show{display:flex} #scanSheet{background:#fff;border-radius:16px;max-width:520px;width:92vw;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)} .scanRow{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px} .scanBtn{flex:1 1 160px;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#f8fafc;font-weight:800;cursor:pointer} .scanLink{display:inline-block;margin-top:10px;font-weight:700}
+  
+  /* Mostrar panel Pro cuando el checkbox está marcado (sin JS) */
+  #proPanel{display:none}
+  #pro:checked ~ #proPanel{display:block}
+
+  #safariBanner{display:none;position:sticky;top:0;z-index:99;padding:10px;border-radius:12px;margin-bottom:10px;
+    background:#fff3cd;border:1px solid #ffe69c;color:#7a5b00;font-weight:700}
+  #safariBanner .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btnMini{padding:6px 10px;border-radius:10px;border:1px solid #d0d7de;background:#fff;font-weight:800}
+
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.20</span> <span class="tag" style="margin-left:8px">v4.3.20</span></h1>
+
+    <div class="card">
+      <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
+        <div class="row">
+          <div>
+            <label for="category">Categoría</label>
+            <select id="category" name="category">
+              <option value="levante">Levante</option>
+              <option value="vaca_flaca">Vaca flaca</option>
+              <option value="engorde">Engorde</option>
+            </select>
+          </div>
+          <div>
+            <label for="file">Imagen del animal</label>
+            <input id="file" name="file" type="file" accept="image/*" capture="environment" required />
+          </div>
+        </div>
+
+        <div class="mt"><span class="tag">Pro mode</span> <span class="muted">— usa opciones 3D o la cámara 2D</span></div>
+        <div id="proPanel" class="mt" style="display:block">
+          <div id="proUnsupported" class="muted hidden">Tu teléfono no soporta escáner 3D desde el navegador. Puedes usar cámara 2D.</div>
+          <div id="proControls">
+            <div class="scanRow">
+              <button type="button" id="cam2dBtn" class="scanBtn">Usar cámara 2D ahora</button>
+              <a id="openScaniverseNow" class="scanBtn" href="itms-apps://itunes.apple.com/app/id1541433223">Abrir Scaniverse (App Store → Abrir)</a>
+              <a id="runShortcutNow" class="scanBtn" href="shortcuts://run-shortcut?name=Abrir%20Scaniverse">Ejecutar Atajo “Abrir Scaniverse”</a>
+            </div>
+            <div class="muted" style="margin-top:6px">A: cámara 2D (sin LiDAR). B: abrir app LiDAR (Scaniverse/Polycam) para capturar 3D.</div>
+          </div>
+          <input type="hidden" name="pro" id="proHidden" value="0" />
+<script>
+(function(){
+  try{
+    var sb = document.getElementById('scanBtn');
+    if(sb){ sb.removeAttribute('disabled'); sb.style.opacity='1'; sb.style.pointerEvents='auto'; }
+  }catch(e){}
+})();
+</script>
+
+        </div>
+        <script>(function(){try{var c=document.getElementById('pro');var p=document.getElementById('proPanel');if(c&&p){p.style.display=c.checked?'block':'none';}}catch(e){}})();
+function /* removed */ tryOpenChainWithStore(schemes, storeId){
+  // strategies
+  const openers = [
+    (u)=>{ try{ window.location.href = u; }catch(_){} },
+    (u)=>{ try{ window.open(u, '_top'); }catch(_){} },
+    (u)=>{ try{ const a=document.createElement('a'); a.href=u; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); }catch(_){} },
+  ];
+  let i=0, s=0;
+  const start = Date.now();
+  let switched = false;
+  function onHide(){ switched = true; cleanup(); }
+  function cleanup(){
+    document.removeEventListener('visibilitychange', onHide, {once:true});
+    document.removeEventListener('pagehide', onHide, {once:true});
+  }
+  document.addEventListener('visibilitychange', onHide, {once:true});
+  document.addEventListener('pagehide', onHide, {once:true});
+  function attempt(){
+    if (switched) return;
+    if (i < schemes.length){
+      const url = schemes[i++];
+      openers[s%openers.length](url); s++;
+      setTimeout(attempt, 700);
+      return;
+    }
+    // fallback: abrir la ficha directa en App Store (si está instalada, verás "Abrir")
+    const itms = 'itms-apps://itunes.apple.com/app/id'+storeId;
+    try{ window.location.href = itms; }catch(_){}
+    cleanup();
+  }
+  attempt();
+}
+
+
+// toggle guía
+(function(){
+  try{
+    const tips = document.getElementById('openShortcutsTips');
+    const guide = document.getElementById('shortcutGuide');
+    if(tips && guide){
+      tips.addEventListener('click', ()=>{ guide.style.display = guide.style.display==='none' ? 'block':'none'; });
+    }
+  }catch(e){}
+})();
+
+// Detecta navegadores embebidos (Facebook/Instagram/Telegram/etc.)
+(function(){
+  try{
+    const ua = navigator.userAgent || '';
+    const suspects = /(FBAN|FBAV|Instagram|Line|Twitter|Pinterest|VK.*like|FB_IAB|FB4A|MicroMessenger|Snapchat|TikTok|GSA|DuckDuckGo)/i;
+    const isInApp = suspects.test(ua) || (window !== window.top);
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS/i.test(ua);
+    const banner = document.getElementById('safariBanner');
+    if (banner && (!isSafari || isInApp)) {
+      banner.style.display = 'block';
+      const btn = document.getElementById('copyUrl');
+      if (btn){
+        btn.addEventListener('click', async ()=>{
+          try{ await navigator.clipboard.writeText(window.location.href); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar URL',1500);}catch(e){}
+        });
+      }
+    }
+  }catch(e){}
+})();
+
+
+(function(){
+  try{
+    const btn = document.getElementById('copyScheme');
+    if(btn){
+      btn.addEventListener('click', async ()=>{
+        try{ await navigator.clipboard.writeText('scaniverse://scan'); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar scaniverse://scan',1500);}catch(e){}
+      });
+    }
+  }catch(e){}
+})();
+
+</script>
+
+        <button id="submitBtn" type="submit" class="mt">
+          <span id="btnText">Evaluar</span>
+          <span id="spinner" class="hidden"> ⏳</span>
+        </button>
+        <p id="error" class="muted hidden"></p>
+      </form>
+    </div>
+
+    <div id="viz" class="card mt hidden"></div>
+    <div class="card mt">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="tag">JSON</span><span class="muted">Respuesta completa (debug)</span>
+      </div>
+      <pre id="out">{}</pre>
+    </div>
+  </div>
+
+  <!-- Modal de apps 3D -->
+  
+  <div id="scanModal">
+    <div id="scanSheet">
+      <div style="font-size:18px;font-weight:800;">Escáner 3D en iPhone</div>
+      <div class="muted" style="margin-top:6px">Safari bloquea a veces los enlaces directos. Usa una de estas opciones:</div>
+      <div class="scanRow" style="margin-top:10px">
+        <a class="scanBtn" id="openScaniverseStore" href="itms-apps://itunes.apple.com/app/id1541433223">Abrir Scaniverse (App Store)</a>
+        <a class="scanBtn" id="openPolycamStore" href="itms-apps://itunes.apple.com/app/id1532482376">Abrir Polycam (App Store)</a>
+      </div>
+      <div class="muted" style="margin-top:8px">Si ya la tienes instalada, la ficha mostrará <b>Abrir</b>.</div>
+      <div style="margin-top:12px;font-weight:800">Opción alternativa: Atajo de iOS</div>
+      <ol class="muted" style="margin-top:6px;padding-left:18px">
+        <li>Abre la app <b>Atajos</b> en tu iPhone.</li>
+        <li>Crea un atajo llamado <b>“Abrir Scaniverse”</b> que ejecute la acción <b>Abrir URL</b> con <code>scaniverse://scan</code>.</li>
+        <li>Opcional: Añádelo a la pantalla de inicio o asigna un comando de <b>Siri</b>.</li>
+      </ol>
+      <div class="scanRow">
+        <button class="scanBtn" id="openShortcutsTips">Ver guía rápida</button>
+        <a class="scanBtn" id="runShortcut" href="shortcuts://run-shortcut?name=Abrir%20Scaniverse">Ejecutar Atajo “Abrir Scaniverse”</a>
+        <button class="scanBtn" id="copyScheme">Copiar <code>scaniverse://scan</code></button>
+      </div>
+      <div id="shortcutGuide" class="muted" style="display:none;margin-top:10px">
+        <div style="font-weight:800;margin-bottom:6px">Guía rápida (Shortcut)</div>
+        <div>1) Atajos → <i>Nuevo atajo</i> → <i>Añadir acción</i> → busca “URL” → escribe <code>scaniverse://scan</code> → <i>Hecho</i>.<br/>
+        2) Añade acción “Abrir URLs”.<br/>
+        3) Toca el botón de info del atajo → “Añadir a pantalla de inicio” o “Añadir a Siri”.</div>
+      </div>
+      <div style="text-align:right;margin-top:10px">
+        <a href="#" id="closeScanModal" class="scanLink" onclick="event.preventDefault();try{document.getElementById('scanModal').classList.remove('show');}catch(e){}">Cerrar</a>
+      </div>
+    </div>
+  </div>
+<div id="busyOverlay"><div style="background:#fff;border-radius:16px;padding:14px 16px;display:flex;gap:10px;align-items:center">
+    <div class="spinner"></div><div style="font-weight:700">Evaluando…</div>
+  </div></div>
+
+<script>
+function supports3D(){ const ua=navigator.userAgent||''; const i=/iPhone|iPad/i.test(ua); const a=/Android/i.test(ua); const xr='xr' in navigator; const motion='DeviceMotionEvent' in window; return (i&&motion)||(a&&xr); }
+function scoreColor(v){ if(v<5) return '#ef4444'; if(v<6.5) return '#f59e0b'; return '#16a34a'; }
+function decisionStyle(level){ const L=(level||'').toUpperCase(); if(L==='DESCARTAR')return{text:'descartar',cls:'badgeLg bRed',col:'#ef4444'}; if(L==='CONSIDERAR_BAJO')return{text:'considerar bajo',cls:'badgeLg bAmber',col:'#f59e0b'}; return{text:'considerar alto',cls:'badgeLg bGreen',col:'#16a34a'}; }
+function gaugeHTML(score, color){ const deg=Math.max(0,Math.min(360,(score/10)*360)); return `<div class="gauge" style="background:conic-gradient(${color} ${deg}deg, #e5e7eb ${deg}deg 360deg)"><div>${score.toFixed(1)}</div></div>`; }
+function scoreBarHTML(v){ const c=scoreColor(v); const pct=Math.max(0,Math.min(100,v*10)); const left=`calc(${pct}% - 16px)`; return `<div class="meter"><div class="meterFill" style="width:${pct}%; background:${c}"></div><div class="meterNum" style="left:${left}; border-color:${c}; color:${c}">${v}</div></div>`; }
+
+function renderViz(data, imgURL){
+  const root=document.getElementById('viz'); root.classList.remove('hidden'); root.innerHTML='';
+  const header=document.createElement('div'); header.style.display='flex'; header.style.alignItems='center'; header.style.justifyContent='space-between'; header.style.gap='12px';
+  const left=document.createElement('div'); left.style.display='flex'; left.style.gap='12px'; left.style.alignItems='center';
+  const img=document.createElement('img'); img.src=imgURL||''; img.width=90; img.height=70; img.style.objectFit='cover'; img.style.borderRadius='12px'; img.style.background='#eee';
+
+  const d=decisionStyle(data.decision?.decision_level);
+  const title=document.createElement('div');
+  title.innerHTML=`
+    <div style="font-size:18px;font-weight:800;text-transform:uppercase">${(data.category||'').replace('_',' ')}</div>
+    <div><span class="tag">${data.mode||'standard'}</span><span class="${d.cls}" style="margin-left:6px">${d.text}</span></div>
+    <div class="muted">${data.decision?.decision_text||''}</div>`;
+  left.appendChild(img); left.appendChild(title);
+  const right=document.createElement('div'); right.innerHTML=gaugeHTML(Number(data.decision?.global_score||0), d.col);
+  header.appendChild(left); header.appendChild(right); root.appendChild(header);
+
+  const rubric=data.rubric||{}; const notes=data.rubric_notes||{};
+  const order=["Condición corporal (BCS)","Conformación general","Línea dorsal","Angulación costillar","Profundidad de pecho","Aplomos (patas)","Lomo","Grupo / muscling posterior","Balance anterior–posterior","Ancho torácico","Inserción de cola"];
+  const table=document.createElement('table'); table.className='table mt'; table.innerHTML="<thead><tr><th>Métrica</th><th>Score</th><th>Obs</th></tr></thead>";
+  const tb=document.createElement('tbody');
+  order.forEach(k=>{ const v=Number(rubric[k]??0); const tr=document.createElement('tr'); tr.innerHTML=`<td>${k}</td><td class="scoreTd">${scoreBarHTML(v)}</td><td class="muted">${notes[k]||''}</td>`; tb.appendChild(tr); });
+  table.appendChild(tb); root.appendChild(table);
+
+  const row=document.createElement('div'); row.className='row2 mt';
+  const health=document.createElement('div'); health.className='card'; health.style.padding='12px';
+  const breed=document.createElement('div'); breed.className='card'; breed.style.padding='12px';
+  const flags=(data.health?.flags||[]);
+  const names=["lesion_cutanea","claudicacion","secrecion_nasal","conjuntivitis","diarrea","dermatitis","lesion_de_pezuna","parasitos_externos","tos"];
+  const chips=names.map(n=>{ const found=flags.includes(n); const cls=found?'bad':'ok'; const label=n.replaceAll('_',' '); const sub=found?'— encontrada':'— descartada'; return `<span class="chip ${cls}">${label}<span class="sub">${sub}</span></span>`; }).join('');
+  health.innerHTML=`<div style="font-weight:800;margin-bottom:8px">Salud</div><div>${chips}</div><div class="muted" style="margin-top:8px">${(data.health?.notes||'').trim()||'Sin comentario adicional.'}</div>`;
+  breed.innerHTML=`<div style="font-weight:800;margin-bottom:8px">Raza (estimada)</div><div class="muted">${data.breed?.guess||'Indeterminado'} — conf: ${Math.round((data.breed?.confidence??0)*100)}%</div>`;
+  row.appendChild(health); row.appendChild(breed); root.appendChild(row);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  function supports3D(){ const ua=navigator.userAgent||''; const isiOS=/iPhone|iPad/i.test(ua); const hasMotion='DeviceMotionEvent' in window; const xr='xr' in navigator; return (isiOS && hasMotion) || xr; }
+
+  const form=document.getElementById('uploadForm'); const btn=document.getElementById('submitBtn'); const btnText=document.getElementById('btnText'); const spinner=document.getElementById('spinner'); const out=document.getElementById('out'); const errorP=document.getElementById('error'); const overlay=document.getElementById('busyOverlay');
+  const proChk=document.getElementById('pro'); const proPanel=document.getElementById('proPanel'); const proHidden=document.getElementById('proHidden'); const proUnsupported=document.getElementById('proUnsupported'); const proControls=document.getElementById('proControls');
+  const scanBtn=document.getElementById('scanBtn'); const cam2dBtn=document.getElementById('cam2dBtn');
+  const scanModal=document.getElementById('scanModal'); const closeScan=document.getElementById('closeScanModal'); const openPoly=document.getElementById('openPolycam'); const openScani=document.getElementById('openScaniverse');
+
+
+  function applyProState(){
+    const checked = proChk.checked;
+    proPanel.classList.toggle('hidden', !checked);
+    if(!checked){ proHidden.value = "0"; return; }
+    const ok3d = supports3D();
+    // mostrar siempre los controles (al menos cámara 2D)
+    proControls.classList.remove('hidden');
+    // mensaje si no hay 3D
+    proUnsupported.classList.toggle('hidden', ok3d);
+    // configurar botón 3D
+    if (scanBtn){
+      /* scanBtn gating removed */
+      scanBtn.textContent = 'Escáner 3D (iOS)';
+    }
+    // por defecto a 2D hasta que el usuario dispare 3D
+    proHidden.value = "0";
+  }
+  proChk.addEventListener('change', applyProState);
+
+  function openModal(){ scanModal.classList.add('show'); }
+  function closeModal(e){ if(e) e.preventDefault(); scanModal.classList.remove('show'); }
+  if(closeScan){ closeScan.addEventListener('click', closeModal); }
+
+  if(cam2dBtn){
+    cam2dBtn.addEventListener('click',()=>{
+      proHidden.value="0"; // modo 2D
+      const fileInput=document.getElementById('file');
+      try{ fileInput.setAttribute('accept','image/*'); fileInput.setAttribute('capture','environment'); }catch(_){}
+      fileInput.click();
+    });
+  }
+
+  
+function showToast(msg){
+  let el = document.getElementById('toast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.style.position='fixed'; el.style.left='50%'; el.style.bottom='24px'; el.style.transform='translateX(-50%)';
+    el.style.background='#0b1320'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='10px';
+    el.style.zIndex='70'; el.style.fontWeight='800'; el.style.boxShadow='0 10px 20px rgba(0,0,0,.25)';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity='1';
+  setTimeout(()=>{ el.style.opacity='0'; }, 2400);
+}
+
+
+
+function /* removed */ tryDeepLinkChain(schemes){
+  const strategies = [
+    (u)=>{ try{ window.location.href = u; }catch(_){}},
+    (u)=>{ try{ window.open(u, '_top'); }catch(_){}},
+    (u)=>{ try{ const a=document.createElement('a'); a.href=u; a.style.display='none'; document.body.appendChild(a); a.click(); document.body.removeChild(a);}catch(_){}},
+  ];
+  let s=0,i=0;
+  function next(){
+    if(i>=schemes.length){ return; }
+    const url = schemes[i++];
+    strategies[s%strategies.length](url); s++;
+    setTimeout(()=>{ next(); }, 900);
+  }
+  next();
+}
+
+  // iOS: use direct location first (user gesture) then fallback attempts.
+  const start = Date.now();
+  let i = 0;
+  function attempt(){
+    if (i >= schemes.length){
+      // last resort: store
+      window.location.href = storeURL;
+      return;
+    }
+    const scheme = schemes[i++];
+    try { window.location.href = scheme; } catch(_) {}
+    // If app switch happens, visibility/pagehide will fire; otherwise continue
+    const t0 = Date.now();
+    const timeout = 900; // tuned for iOS 15–18
+    const onHide = () => { cleanup(); };
+    function cleanup(){
+      document.removeEventListener('visibilitychange', onHide, {once:true});
+      document.removeEventListener('pagehide', onHide, {once:true});
+    }
+    document.addEventListener('visibilitychange', onHide, {once:true});
+    document.addEventListener('pagehide', onHide, {once:true});
+    setTimeout(()=>{
+      cleanup();
+      if (Date.now() - t0 < timeout + 100){
+        // seems not opened; try next scheme
+        attempt();
+      }
+    }, timeout);
+  }
+  attempt();
+}
+
+  // 1) attempt direct navigation (often works better on iOS)
+  const t0 = Date.now();
+  try { window.location = scheme; } catch(_) {}
+  setTimeout(()=>{
+    if (Date.now()-t0 > 1600) return; // seems app switched
+    // 2) fallback hidden iframe (some Safari versions)
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = scheme;
+    document.body.appendChild(iframe);
+    const t1 = Date.now();
+    setTimeout(()=>{
+      try{ document.body.removeChild(iframe); }catch(_){}
+      if (Date.now()-t1 < 1400){
+        showToast('No se pudo abrir la app; te llevamos a la tienda…');
+        window.location.href = storeURL;
+      }
+    }, 1200);
+  }, 700);
+}
+
+    const iframe=document.createElement('iframe'); iframe.style.display='none'; iframe.src=scheme; document.body.appendChild(iframe);
+    const t=Date.now();
+    setTimeout(()=>{ try{document.body.removeChild(iframe)}catch(_){}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
+  }
+  if(scanBtn){ scanBtn.addEventListener('click',()=>{ openModal(); }); }
+  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; /* removed */ tryOpenChainWithStore(['#','polycam://'], '1532482376'); }); }
+  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; /* removed */ tryOpenChainWithStore(['#','scaniverse://'], '1541433223'); }); }
+
+  applyProState();
+
+  
+  // debug guard: if any JS error stopped earlier code, ensure pro panel toggles
+  function forceShowPro(){
+    const chk = document.getElementById('pro');
+    const panel = document.getElementById('proPanel');
+    if(!chk || !panel) return;
+    panel.classList.toggle('hidden', !chk.checked);
+  }
+  setTimeout(forceShowPro, 50);
+
+    // Fuerza que el botón 3D esté habilitado, sin depender de detección
+  try{ var sb=document.getElementById('scanBtn'); if(sb){ sb.disabled=false; sb.textContent='Escáner 3D (iOS)'; } }catch(e){}
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault(); errorP.classList.add('hidden'); out.textContent='{}'; overlay.classList.add('show'); btn.disabled=true; spinner.classList.remove('hidden'); btnText.textContent='Evaluando...';
+    const fd=new FormData(form);
+    try{
+      const f=document.getElementById('file').files[0]; const imgPreviewURL=f?URL.createObjectURL(f):null;
+      const resp=await fetch(form.action,{method:'POST',body:fd}); const txt=await resp.text(); let data=null; try{data=JSON.parse(txt)}catch(_){}
+      if(!resp.ok) throw new Error((data&&(data.error||data.detail))?(data.error+ (data.detail?': '+data.detail:'')):'HTTP '+resp.status);
+      if(!data) throw new Error('Respuesta no-JSON'); if(data.error) throw new Error(data.error+ (data.detail?': '+data.detail:''));
+      out.textContent=JSON.stringify(data,null,2); renderViz(data,imgPreviewURL);
+    }catch(err){ console.error(err); errorP.textContent=err?.message||String(err); errorP.classList.remove('hidden');
+    }finally{ overlay.classList.remove('show'); btn.disabled=false; spinner.classList.add('hidden'); btnText.textContent='Evaluar'; }
+  });
+});
+
+function /* removed */ tryOpenChainWithStore(schemes, storeId){
+  // strategies
+  const openers = [
+    (u)=>{ try{ window.location.href = u; }catch(_){} },
+    (u)=>{ try{ window.open(u, '_top'); }catch(_){} },
+    (u)=>{ try{ const a=document.createElement('a'); a.href=u; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); }catch(_){} },
+  ];
+  let i=0, s=0;
+  const start = Date.now();
+  let switched = false;
+  function onHide(){ switched = true; cleanup(); }
+  function cleanup(){
+    document.removeEventListener('visibilitychange', onHide, {once:true});
+    document.removeEventListener('pagehide', onHide, {once:true});
+  }
+  document.addEventListener('visibilitychange', onHide, {once:true});
+  document.addEventListener('pagehide', onHide, {once:true});
+  function attempt(){
+    if (switched) return;
+    if (i < schemes.length){
+      const url = schemes[i++];
+      openers[s%openers.length](url); s++;
+      setTimeout(attempt, 700);
+      return;
+    }
+    // fallback: abrir la ficha directa en App Store (si está instalada, verás "Abrir")
+    const itms = 'itms-apps://itunes.apple.com/app/id'+storeId;
+    try{ window.location.href = itms; }catch(_){}
+    cleanup();
+  }
+  attempt();
+}
+
+
+// toggle guía
+(function(){
+  try{
+    const tips = document.getElementById('openShortcutsTips');
+    const guide = document.getElementById('shortcutGuide');
+    if(tips && guide){
+      tips.addEventListener('click', ()=>{ guide.style.display = guide.style.display==='none' ? 'block':'none'; });
+    }
+  }catch(e){}
+})();
+
+// Detecta navegadores embebidos (Facebook/Instagram/Telegram/etc.)
+(function(){
+  try{
+    const ua = navigator.userAgent || '';
+    const suspects = /(FBAN|FBAV|Instagram|Line|Twitter|Pinterest|VK.*like|FB_IAB|FB4A|MicroMessenger|Snapchat|TikTok|GSA|DuckDuckGo)/i;
+    const isInApp = suspects.test(ua) || (window !== window.top);
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS/i.test(ua);
+    const banner = document.getElementById('safariBanner');
+    if (banner && (!isSafari || isInApp)) {
+      banner.style.display = 'block';
+      const btn = document.getElementById('copyUrl');
+      if (btn){
+        btn.addEventListener('click', async ()=>{
+          try{ await navigator.clipboard.writeText(window.location.href); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar URL',1500);}catch(e){}
+        });
+      }
+    }
+  }catch(e){}
+})();
+
+
+(function(){
+  try{
+    const btn = document.getElementById('copyScheme');
+    if(btn){
+      btn.addEventListener('click', async ()=>{
+        try{ await navigator.clipboard.writeText('scaniverse://scan'); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar scaniverse://scan',1500);}catch(e){}
+      });
+    }
+  }catch(e){}
+})();
+
+</script>
+</body>
+</html>
