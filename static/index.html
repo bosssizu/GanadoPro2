@@ -39,7 +39,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.11</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.12</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -59,9 +59,10 @@
         </div>
 
         <div class="mt">
-          <label><input type="checkbox" id="pro" /> Pro mode (LiDAR/Depth)</label>
+          <input type="checkbox" id="pro" onchange="(function(c){var p=document.getElementById('proPanel'); if(p){p.style.display=c.checked?'block':'none';} var h=document.getElementById('proHidden'); if(h) h.value='0';})(this)">
+          <label for="pro" style="font-weight:700; margin-left:6px">Pro mode (LiDAR/Depth)</label>
         </div>
-        <div id="proPanel" class="mt">
+        <div id="proPanel" class="mt" style="display:none">
           <div id="proUnsupported" class="muted hidden">Tu teléfono no soporta escáner 3D desde el navegador. Puedes usar cámara 2D.</div>
           <div id="proControls">
             <div class="scanRow">
@@ -72,6 +73,7 @@
           </div>
           <input type="hidden" name="pro" id="proHidden" value="0" />
         </div>
+        <script>(function(){try{var c=document.getElementById('pro');var p=document.getElementById('proPanel');if(c&&p){p.style.display=c.checked?'block':'none';}}catch(e){}})();</script>
 
         <button id="submitBtn" type="submit" class="mt">
           <span id="btnText">Evaluar</span>
@@ -98,6 +100,7 @@
       <div class="scanRow">
         <button class="scanBtn" id="openPolycam">Abrir Polycam</button>
         <button class="scanBtn" id="openScaniverse">Abrir Scaniverse</button>
+        <a class="scanBtn" href="scaniverse://scan" id="openScaniverseDirect">Abrir Scaniverse directo</a>
       </div>
       <div class="muted" style="margin-top:12px">¿No tienes ninguna? Instala una:</div>
       <div class="scanRow">
