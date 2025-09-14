@@ -62,9 +62,9 @@
           <div id="proControls" class="hidden">
             <div class="scanRow">
               <button type="button" id="cam2dBtn" class="scanBtn">Usar cámara 2D ahora</button>
-              <button type="button" id="scanBtn" class="scanBtn">Escáner 3D (app)</button>
+              <button type="button" id="scanBtn" class="scanBtn">Escáner 3D (abrir Scaniverse/Polycam)</button>
             </div>
-            <div class="muted" style="margin-top:6px">A: cámara 2D directa. B: abrir app LiDAR para 3D (Polycam/Scaniverse).</div>
+            <div class="muted" style="margin-top:6px">A: cámara 2D (sin LiDAR). B: abrir app LiDAR (Scaniverse/Polycam) para capturar 3D.</div>
           </div>
           <input type="hidden" name="pro" id="proHidden" value="0" />
         </div>
@@ -179,7 +179,44 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   }
 
-  function tryDeepLink(scheme, storeURL){
+  
+function showToast(msg){
+  let el = document.getElementById('toast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.style.position='fixed'; el.style.left='50%'; el.style.bottom='24px'; el.style.transform='translateX(-50%)';
+    el.style.background='#0b1320'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='10px';
+    el.style.zIndex='70'; el.style.fontWeight='800'; el.style.boxShadow='0 10px 20px rgba(0,0,0,.25)';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity='1';
+  setTimeout(()=>{ el.style.opacity='0'; }, 2400);
+}
+
+function tryDeepLink(scheme, storeURL){
+  // 1) attempt direct navigation (often works better on iOS)
+  const t0 = Date.now();
+  try { window.location = scheme; } catch(_) {}
+  setTimeout(()=>{
+    if (Date.now()-t0 > 1600) return; // seems app switched
+    // 2) fallback hidden iframe (some Safari versions)
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = scheme;
+    document.body.appendChild(iframe);
+    const t1 = Date.now();
+    setTimeout(()=>{
+      try{ document.body.removeChild(iframe); }catch(_){}
+      if (Date.now()-t1 < 1400){
+        showToast('No se pudo abrir la app; te llevamos a la tienda…');
+        window.location.href = storeURL;
+      }
+    }, 1200);
+  }, 700);
+}
+
     const iframe=document.createElement('iframe'); iframe.style.display='none'; iframe.src=scheme; document.body.appendChild(iframe);
     const t=Date.now();
     setTimeout(()=>{ try{document.body.removeChild(iframe)}except{}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
