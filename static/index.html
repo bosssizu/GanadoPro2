@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.16</span></title>
+  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.17</span></title>
   <style>
     :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
@@ -39,7 +39,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.16</span> <span class="tag" style="margin-left:8px">v4.3.16</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.17</span> <span class="tag" style="margin-left:8px">v4.3.17</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -67,14 +67,14 @@
           <div id="proControls">
             <div class="scanRow">
               <button type="button" id="cam2dBtn" class="scanBtn">Usar cámara 2D ahora</button>
-              <button type="button" id="scanBtn" class="scanBtn">Escáner 3D (abrir Scaniverse/Polycam)</button>
+              <button type="button" id="scanBtn" class="scanBtn">Escáner 3D (iOS)</button>
             </div>
             <div class="muted" style="margin-top:6px">A: cámara 2D (sin LiDAR). B: abrir app LiDAR (Scaniverse/Polycam) para capturar 3D.</div>
           </div>
           <input type="hidden" name="pro" id="proHidden" value="0" />
         </div>
         <script>(function(){try{var c=document.getElementById('pro');var p=document.getElementById('proPanel');if(c&&p){p.style.display=c.checked?'block':'none';}}catch(e){}})();
-function tryOpenChainWithStore(schemes, storeId){
+function /* removed */ tryOpenChainWithStore(schemes, storeId){
   // strategies
   const openers = [
     (u)=>{ try{ window.location.href = u; }catch(_){} },
@@ -107,6 +107,17 @@ function tryOpenChainWithStore(schemes, storeId){
   attempt();
 }
 
+
+// toggle guía
+(function(){
+  try{
+    const tips = document.getElementById('openShortcutsTips');
+    const guide = document.getElementById('shortcutGuide');
+    if(tips && guide){
+      tips.addEventListener('click', ()=>{ guide.style.display = guide.style.display==='none' ? 'block':'none'; });
+    }
+  }catch(e){}
+})();
 </script>
 
         <button id="submitBtn" type="submit" class="mt">
@@ -127,32 +138,37 @@ function tryOpenChainWithStore(schemes, storeId){
   </div>
 
   <!-- Modal de apps 3D -->
+  
   <div id="scanModal">
     <div id="scanSheet">
-      <div style="font-size:18px;font-weight:800;">Abrir escáner 3D</div>
-      <div class="muted" style="margin-top:6px">Elige una app LiDAR para escanear. Si ya la tienes instalada y Safari no abre, usa los enlaces directos o abre la app desde la pantalla de inicio.</div>
-      <div class="scanRow">
-        <button class="scanBtn" id="openPolycam">Abrir Polycam</button>
-        <button class="scanBtn" id="openScaniverse">Abrir Scaniverse</button>
-        <a class="scanBtn" href="scaniverse://scan" id="openScaniverseDirect">Abrir Scaniverse directo (si falla el botón)</a>
+      <div style="font-size:18px;font-weight:800;">Escáner 3D en iPhone</div>
+      <div class="muted" style="margin-top:6px">Safari bloquea a veces los enlaces directos. Usa una de estas opciones:</div>
+      <div class="scanRow" style="margin-top:10px">
+        <a class="scanBtn" id="openScaniverseStore" href="itms-apps://itunes.apple.com/app/id1541433223">Abrir Scaniverse (App Store)</a>
+        <a class="scanBtn" id="openPolycamStore" href="itms-apps://itunes.apple.com/app/id1532482376">Abrir Polycam (App Store)</a>
       </div>
-      <div class="muted" style="margin-top:8px">Enlaces directos (si el botón no abre):</div>
+      <div class="muted" style="margin-top:8px">Si ya la tienes instalada, la ficha mostrará <b>Abrir</b>.</div>
+      <div style="margin-top:12px;font-weight:800">Opción alternativa: Atajo de iOS</div>
+      <ol class="muted" style="margin-top:6px;padding-left:18px">
+        <li>Abre la app <b>Atajos</b> en tu iPhone.</li>
+        <li>Crea un atajo llamado <b>“Abrir Scaniverse”</b> que ejecute la acción <b>Abrir URL</b> con <code>scaniverse://scan</code>.</li>
+        <li>Opcional: Añádelo a la pantalla de inicio o asigna un comando de <b>Siri</b>.</li>
+      </ol>
       <div class="scanRow">
-        <a class="scanBtn" href="scaniverse://scan">scaniverse://scan</a>
-        <a class="scanBtn" href="polycam://scan">polycam://scan</a>
+        <button class="scanBtn" id="openShortcutsTips">Ver guía rápida</button>
       </div>
-      <div class="muted" style="margin-top:12px">¿No tienes ninguna? Instala una:</div>
-      <div class="scanRow">
-        <a class="scanBtn" href="https://apps.apple.com/search?term=polycam" target="_blank" rel="noopener">Instalar Polycam</a>
-        <a class="scanBtn" href="https://apps.apple.com/search?term=scaniverse" target="_blank" rel="noopener">Instalar Scaniverse</a>
+      <div id="shortcutGuide" class="muted" style="display:none;margin-top:10px">
+        <div style="font-weight:800;margin-bottom:6px">Guía rápida</div>
+        <div>1) Atajos → <i>Nuevo atajo</i> → <i>Añadir acción</i> → busca “URL” → escribe <code>scaniverse://scan</code> → <i>Hecho</i>.<br/>
+        2) Añade acción “Abrir URLs”.<br/>
+        3) Toca el botón de info del atajo → “Añadir a pantalla de inicio” o “Añadir a Siri”.</div>
       </div>
-      <div style="text-align:right;margin-top:8px">
+      <div style="text-align:right;margin-top:10px">
         <a href="#" id="closeScanModal" class="scanLink">Cerrar</a>
       </div>
     </div>
   </div>
-
-  <div id="busyOverlay"><div style="background:#fff;border-radius:16px;padding:14px 16px;display:flex;gap:10px;align-items:center">
+<div id="busyOverlay"><div style="background:#fff;border-radius:16px;padding:14px 16px;display:flex;gap:10px;align-items:center">
     <div class="spinner"></div><div style="font-weight:700">Evaluando…</div>
   </div></div>
 
@@ -218,7 +234,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     // configurar botón 3D
     if (scanBtn){
       /* scanBtn gating removed */
-      scanBtn.textContent = 'Escáner 3D (abrir Scaniverse/Polycam)';
+      scanBtn.textContent = 'Escáner 3D (iOS)';
     }
     // por defecto a 2D hasta que el usuario dispare 3D
     proHidden.value = "0";
@@ -256,7 +272,7 @@ function showToast(msg){
 
 
 
-function tryDeepLinkChain(schemes){
+function /* removed */ tryDeepLinkChain(schemes){
   const strategies = [
     (u)=>{ try{ window.location.href = u; }catch(_){}},
     (u)=>{ try{ window.open(u, '_top'); }catch(_){}},
@@ -330,8 +346,8 @@ function tryDeepLinkChain(schemes){
     setTimeout(()=>{ try{document.body.removeChild(iframe)}catch(_){}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
   }
   if(scanBtn){ scanBtn.addEventListener('click',()=>{ openModal(); }); }
-  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; tryOpenChainWithStore(['polycam://scan','polycam://'], '1532482376'); }); }
-  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; tryOpenChainWithStore(['scaniverse://scan','scaniverse://'], '1541433223'); }); }
+  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; /* removed */ tryOpenChainWithStore(['#','polycam://'], '1532482376'); }); }
+  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value='1'; /* removed */ tryOpenChainWithStore(['#','scaniverse://'], '1541433223'); }); }
 
   applyProState();
 
@@ -346,7 +362,7 @@ function tryDeepLinkChain(schemes){
   setTimeout(forceShowPro, 50);
 
     // Fuerza que el botón 3D esté habilitado, sin depender de detección
-  try{ var sb=document.getElementById('scanBtn'); if(sb){ sb.disabled=false; sb.textContent='Escáner 3D (abrir Scaniverse/Polycam)'; } }catch(e){}
+  try{ var sb=document.getElementById('scanBtn'); if(sb){ sb.disabled=false; sb.textContent='Escáner 3D (iOS)'; } }catch(e){}
   form.addEventListener('submit', async (e)=>{
     e.preventDefault(); errorP.classList.add('hidden'); out.textContent='{}'; overlay.classList.add('show'); btn.disabled=true; spinner.classList.remove('hidden'); btnText.textContent='Evaluando...';
     const fd=new FormData(form);
@@ -361,7 +377,7 @@ function tryDeepLinkChain(schemes){
   });
 });
 
-function tryOpenChainWithStore(schemes, storeId){
+function /* removed */ tryOpenChainWithStore(schemes, storeId){
   // strategies
   const openers = [
     (u)=>{ try{ window.location.href = u; }catch(_){} },
@@ -394,6 +410,17 @@ function tryOpenChainWithStore(schemes, storeId){
   attempt();
 }
 
+
+// toggle guía
+(function(){
+  try{
+    const tips = document.getElementById('openShortcutsTips');
+    const guide = document.getElementById('shortcutGuide');
+    if(tips && guide){
+      tips.addEventListener('click', ()=>{ guide.style.display = guide.style.display==='none' ? 'block':'none'; });
+    }
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
