@@ -152,19 +152,32 @@ function renderViz(data, imgURL){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  function supports3D(){ const ua=navigator.userAgent||''; const isiOS=/iPhone|iPad/i.test(ua); const hasMotion='DeviceMotionEvent' in window; const xr='xr' in navigator; return (isiOS && hasMotion) || xr; }
+
   const form=document.getElementById('uploadForm'); const btn=document.getElementById('submitBtn'); const btnText=document.getElementById('btnText'); const spinner=document.getElementById('spinner'); const out=document.getElementById('out'); const errorP=document.getElementById('error'); const overlay=document.getElementById('busyOverlay');
   const proChk=document.getElementById('pro'); const proPanel=document.getElementById('proPanel'); const proHidden=document.getElementById('proHidden'); const proUnsupported=document.getElementById('proUnsupported'); const proControls=document.getElementById('proControls');
   const scanBtn=document.getElementById('scanBtn'); const cam2dBtn=document.getElementById('cam2dBtn');
   const scanModal=document.getElementById('scanModal'); const closeScan=document.getElementById('closeScanModal'); const openPoly=document.getElementById('openPolycam'); const openScani=document.getElementById('openScaniverse');
 
-  proChk.addEventListener('change',()=>{
-    proPanel.classList.toggle('hidden', !proChk.checked);
-    const ok3d=supports3D();
+
+  function applyProState(){
+    const checked = proChk.checked;
+    proPanel.classList.toggle('hidden', !checked);
+    if(!checked){ proHidden.value = "0"; return; }
+    const ok3d = supports3D();
+    // mostrar siempre los controles (al menos cámara 2D)
+    proControls.classList.remove('hidden');
+    // mensaje si no hay 3D
     proUnsupported.classList.toggle('hidden', ok3d);
-    proControls.classList.toggle('hidden', !ok3d && !proChk.checked ? true : false);
-    // por defecto, si pro está activo y no usamos 3D, deja pro=0 (cámara 2D)
-    proHidden.value="0";
-  });
+    // configurar botón 3D
+    if (scanBtn){
+      scanBtn.disabled = !ok3d;
+      scanBtn.textContent = ok3d ? 'Escáner 3D (abrir Scaniverse/Polycam)' : 'Escáner 3D (no soportado)';
+    }
+    // por defecto a 2D hasta que el usuario dispare 3D
+    proHidden.value = "0";
+  }
+  proChk.addEventListener('change', applyProState);
 
   function openModal(){ scanModal.classList.add('show'); }
   function closeModal(e){ if(e) e.preventDefault(); scanModal.classList.remove('show'); }
@@ -224,6 +237,8 @@ function tryDeepLink(scheme, storeURL){
   if(scanBtn){ scanBtn.addEventListener('click',()=>{ openModal(); }); }
   if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLink('polycam://','https://apps.apple.com/search?term=polycam'); }); }
   if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLink('scaniverse://','https://apps.apple.com/search?term=scaniverse'); }); }
+
+  applyProState();
 
   form.addEventListener('submit', async (e)=>{
     e.preventDefault(); errorP.classList.add('hidden'); out.textContent='{}'; overlay.classList.add('show'); btn.disabled=true; spinner.classList.remove('hidden'); btnText.textContent='Evaluando...';
