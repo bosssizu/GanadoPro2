@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.18</span></title>
+  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.19</span></title>
   <style>
     :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
@@ -45,7 +45,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.18</span> <span class="tag" style="margin-left:8px">v4.3.18</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.19</span> <span class="tag" style="margin-left:8px">v4.3.19</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -73,11 +73,20 @@
           <div id="proControls">
             <div class="scanRow">
               <button type="button" id="cam2dBtn" class="scanBtn">Usar cámara 2D ahora</button>
-              <button type="button" id="scanBtn" class="scanBtn">Escáner 3D (iOS)</button>
+              <button type="button" id="scanBtn" class="scanBtn" onclick="try{document.getElementById('scanModal').classList.add('show');}catch(e){}" style="opacity:1;pointer-events:auto">Escáner 3D (iOS)</button>
             </div>
             <div class="muted" style="margin-top:6px">A: cámara 2D (sin LiDAR). B: abrir app LiDAR (Scaniverse/Polycam) para capturar 3D.</div>
           </div>
           <input type="hidden" name="pro" id="proHidden" value="0" />
+<script>
+(function(){
+  try{
+    var sb = document.getElementById('scanBtn');
+    if(sb){ sb.removeAttribute('disabled'); sb.style.opacity='1'; sb.style.pointerEvents='auto'; }
+  }catch(e){}
+})();
+</script>
+
         </div>
         <script>(function(){try{var c=document.getElementById('pro');var p=document.getElementById('proPanel');if(c&&p){p.style.display=c.checked?'block':'none';}}catch(e){}})();
 function /* removed */ tryOpenChainWithStore(schemes, storeId){
@@ -205,7 +214,7 @@ function /* removed */ tryOpenChainWithStore(schemes, storeId){
         3) Toca el botón de info del atajo → “Añadir a pantalla de inicio” o “Añadir a Siri”.</div>
       </div>
       <div style="text-align:right;margin-top:10px">
-        <a href="#" id="closeScanModal" class="scanLink">Cerrar</a>
+        <a href="#" id="closeScanModal" class="scanLink" onclick="event.preventDefault();try{document.getElementById('scanModal').classList.remove('show');}catch(e){}">Cerrar</a>
       </div>
     </div>
   </div>
