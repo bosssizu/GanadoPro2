@@ -39,7 +39,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.14</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.15</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -183,8 +183,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     proUnsupported.classList.toggle('hidden', ok3d);
     // configurar botón 3D
     if (scanBtn){
-      scanBtn.disabled = !ok3d;
-      scanBtn.textContent = ok3d ? 'Escáner 3D (abrir Scaniverse/Polycam)' : 'Escáner 3D (no soportado)';
+      /* scanBtn gating removed */
+      scanBtn.textContent = 'Escáner 3D (abrir Scaniverse/Polycam)';
     }
     // por defecto a 2D hasta que el usuario dispare 3D
     proHidden.value = "0";
@@ -311,6 +311,8 @@ function tryDeepLinkChain(schemes){
   }
   setTimeout(forceShowPro, 50);
 
+    // Fuerza que el botón 3D esté habilitado, sin depender de detección
+  try{ var sb=document.getElementById('scanBtn'); if(sb){ sb.disabled=false; sb.textContent='Escáner 3D (abrir Scaniverse/Polycam)'; } }catch(e){}
   form.addEventListener('submit', async (e)=>{
     e.preventDefault(); errorP.classList.add('hidden'); out.textContent='{}'; overlay.classList.add('show'); btn.disabled=true; spinner.classList.remove('hidden'); btnText.textContent='Evaluando...';
     const fd=new FormData(form);
