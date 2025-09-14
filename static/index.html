@@ -39,7 +39,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.13</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.14</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -96,11 +96,16 @@
   <div id="scanModal">
     <div id="scanSheet">
       <div style="font-size:18px;font-weight:800;">Abrir escáner 3D</div>
-      <div class="muted" style="margin-top:6px">Elige una app LiDAR para escanear.</div>
+      <div class="muted" style="margin-top:6px">Elige una app LiDAR para escanear. Si ya la tienes instalada y Safari no abre, usa los enlaces directos o abre la app desde la pantalla de inicio.</div>
       <div class="scanRow">
         <button class="scanBtn" id="openPolycam">Abrir Polycam</button>
         <button class="scanBtn" id="openScaniverse">Abrir Scaniverse</button>
         <a class="scanBtn" href="scaniverse://scan" id="openScaniverseDirect">Abrir Scaniverse directo (si falla el botón)</a>
+      </div>
+      <div class="muted" style="margin-top:8px">Enlaces directos (si el botón no abre):</div>
+      <div class="scanRow">
+        <a class="scanBtn" href="scaniverse://scan">scaniverse://scan</a>
+        <a class="scanBtn" href="polycam://scan">polycam://scan</a>
       </div>
       <div class="muted" style="margin-top:12px">¿No tienes ninguna? Instala una:</div>
       <div class="scanRow">
@@ -216,7 +221,23 @@ function showToast(msg){
 }
 
 
-function tryDeepLinkChain(schemes, storeURL){
+
+function tryDeepLinkChain(schemes){
+  const strategies = [
+    (u)=>{ try{ window.location.href = u; }catch(_){}},
+    (u)=>{ try{ window.open(u, '_top'); }catch(_){}},
+    (u)=>{ try{ const a=document.createElement('a'); a.href=u; a.style.display='none'; document.body.appendChild(a); a.click(); document.body.removeChild(a);}catch(_){}},
+  ];
+  let s=0,i=0;
+  function next(){
+    if(i>=schemes.length){ return; }
+    const url = schemes[i++];
+    strategies[s%strategies.length](url); s++;
+    setTimeout(()=>{ next(); }, 900);
+  }
+  next();
+}
+
   // iOS: use direct location first (user gesture) then fallback attempts.
   const start = Date.now();
   let i = 0;
@@ -275,8 +296,8 @@ function tryDeepLinkChain(schemes, storeURL){
     setTimeout(()=>{ try{document.body.removeChild(iframe)}catch(_){}; if(Date.now()-t<1600){ window.location.href=storeURL; } },1200);
   }
   if(scanBtn){ scanBtn.addEventListener('click',()=>{ openModal(); }); }
-  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLinkChain(['polycam://scan','polycam://'], 'https://apps.apple.com/search?term=polycam'); }); }
-  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLinkChain(['scaniverse://scan','scaniverse://'], 'https://apps.apple.com/search?term=scaniverse'); }); }
+  if(openPoly){ openPoly.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLinkChain(['polycam://scan','polycam://']); }); }
+  if(openScani){ openScani.addEventListener('click',()=>{ closeModal(); proHidden.value="1"; tryDeepLinkChain(['scaniverse://scan','scaniverse://']); }); }
 
   applyProState();
 
