@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.19</span></title>
+  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.20</span></title>
   <style>
     :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
@@ -13,7 +13,7 @@
     label{font-weight:600;display:block;margin:12px 0 6px}
     select,input[type=file]{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
     button{width:100%;padding:14px 16px;border:0;border-radius:999px;background:#16a34a;color:#fff;font-weight:800;font-size:20px;cursor:pointer}
-    button[disabled]{opacity:.5;cursor:not-allowed}
+    button[disabled]{opacity:1;cursor:pointer}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     .mt{margin-top:16px}.hidden{display:none!important}.muted{color:var(--muted)}
@@ -45,7 +45,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.19</span> <span class="tag" style="margin-left:8px">v4.3.19</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.20</span> <span class="tag" style="margin-left:8px">v4.3.20</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -64,16 +64,14 @@
           </div>
         </div>
 
-        <div class="mt">
-          <input type="checkbox" id="pro" onchange="(function(c){var p=document.getElementById('proPanel'); if(p){p.style.display=c.checked?'block':'none';} var h=document.getElementById('proHidden'); if(h) h.value='0';})(this)">
-          <label for="pro" style="font-weight:700; margin-left:6px">Pro mode (LiDAR/Depth)</label>
-        </div>
-        <div id="proPanel" class="mt" style="display:none">
+        <div class="mt"><span class="tag">Pro mode</span> <span class="muted">— usa opciones 3D o la cámara 2D</span></div>
+        <div id="proPanel" class="mt" style="display:block">
           <div id="proUnsupported" class="muted hidden">Tu teléfono no soporta escáner 3D desde el navegador. Puedes usar cámara 2D.</div>
           <div id="proControls">
             <div class="scanRow">
               <button type="button" id="cam2dBtn" class="scanBtn">Usar cámara 2D ahora</button>
-              <button type="button" id="scanBtn" class="scanBtn" onclick="try{document.getElementById('scanModal').classList.add('show');}catch(e){}" style="opacity:1;pointer-events:auto">Escáner 3D (iOS)</button>
+              <a id="openScaniverseNow" class="scanBtn" href="itms-apps://itunes.apple.com/app/id1541433223">Abrir Scaniverse (App Store → Abrir)</a>
+              <a id="runShortcutNow" class="scanBtn" href="shortcuts://run-shortcut?name=Abrir%20Scaniverse">Ejecutar Atajo “Abrir Scaniverse”</a>
             </div>
             <div class="muted" style="margin-top:6px">A: cámara 2D (sin LiDAR). B: abrir app LiDAR (Scaniverse/Polycam) para capturar 3D.</div>
           </div>
