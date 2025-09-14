@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.17</span></title>
+  <title>GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.18</span></title>
   <style>
     :root{--bg:#f6f7fb;--card:#fff;--text:#0b1320;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
@@ -35,11 +35,17 @@
   /* Mostrar panel Pro cuando el checkbox está marcado (sin JS) */
   #proPanel{display:none}
   #pro:checked ~ #proPanel{display:block}
+
+  #safariBanner{display:none;position:sticky;top:0;z-index:99;padding:10px;border-radius:12px;margin-bottom:10px;
+    background:#fff3cd;border:1px solid #ffe69c;color:#7a5b00;font-weight:700}
+  #safariBanner .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btnMini{padding:6px 10px;border-radius:10px;border:1px solid #d0d7de;background:#fff;font-weight:800}
+
 </style>
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.17</span> <span class="tag" style="margin-left:8px">v4.3.17</span></h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.18</span> <span class="tag" style="margin-left:8px">v4.3.18</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -118,6 +124,39 @@ function /* removed */ tryOpenChainWithStore(schemes, storeId){
     }
   }catch(e){}
 })();
+
+// Detecta navegadores embebidos (Facebook/Instagram/Telegram/etc.)
+(function(){
+  try{
+    const ua = navigator.userAgent || '';
+    const suspects = /(FBAN|FBAV|Instagram|Line|Twitter|Pinterest|VK.*like|FB_IAB|FB4A|MicroMessenger|Snapchat|TikTok|GSA|DuckDuckGo)/i;
+    const isInApp = suspects.test(ua) || (window !== window.top);
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS/i.test(ua);
+    const banner = document.getElementById('safariBanner');
+    if (banner && (!isSafari || isInApp)) {
+      banner.style.display = 'block';
+      const btn = document.getElementById('copyUrl');
+      if (btn){
+        btn.addEventListener('click', async ()=>{
+          try{ await navigator.clipboard.writeText(window.location.href); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar URL',1500);}catch(e){}
+        });
+      }
+    }
+  }catch(e){}
+})();
+
+
+(function(){
+  try{
+    const btn = document.getElementById('copyScheme');
+    if(btn){
+      btn.addEventListener('click', async ()=>{
+        try{ await navigator.clipboard.writeText('scaniverse://scan'); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar scaniverse://scan',1500);}catch(e){}
+      });
+    }
+  }catch(e){}
+})();
+
 </script>
 
         <button id="submitBtn" type="submit" class="mt">
@@ -156,9 +195,11 @@ function /* removed */ tryOpenChainWithStore(schemes, storeId){
       </ol>
       <div class="scanRow">
         <button class="scanBtn" id="openShortcutsTips">Ver guía rápida</button>
+        <a class="scanBtn" id="runShortcut" href="shortcuts://run-shortcut?name=Abrir%20Scaniverse">Ejecutar Atajo “Abrir Scaniverse”</a>
+        <button class="scanBtn" id="copyScheme">Copiar <code>scaniverse://scan</code></button>
       </div>
       <div id="shortcutGuide" class="muted" style="display:none;margin-top:10px">
-        <div style="font-weight:800;margin-bottom:6px">Guía rápida</div>
+        <div style="font-weight:800;margin-bottom:6px">Guía rápida (Shortcut)</div>
         <div>1) Atajos → <i>Nuevo atajo</i> → <i>Añadir acción</i> → busca “URL” → escribe <code>scaniverse://scan</code> → <i>Hecho</i>.<br/>
         2) Añade acción “Abrir URLs”.<br/>
         3) Toca el botón de info del atajo → “Añadir a pantalla de inicio” o “Añadir a Siri”.</div>
@@ -421,6 +462,39 @@ function /* removed */ tryOpenChainWithStore(schemes, storeId){
     }
   }catch(e){}
 })();
+
+// Detecta navegadores embebidos (Facebook/Instagram/Telegram/etc.)
+(function(){
+  try{
+    const ua = navigator.userAgent || '';
+    const suspects = /(FBAN|FBAV|Instagram|Line|Twitter|Pinterest|VK.*like|FB_IAB|FB4A|MicroMessenger|Snapchat|TikTok|GSA|DuckDuckGo)/i;
+    const isInApp = suspects.test(ua) || (window !== window.top);
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS/i.test(ua);
+    const banner = document.getElementById('safariBanner');
+    if (banner && (!isSafari || isInApp)) {
+      banner.style.display = 'block';
+      const btn = document.getElementById('copyUrl');
+      if (btn){
+        btn.addEventListener('click', async ()=>{
+          try{ await navigator.clipboard.writeText(window.location.href); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar URL',1500);}catch(e){}
+        });
+      }
+    }
+  }catch(e){}
+})();
+
+
+(function(){
+  try{
+    const btn = document.getElementById('copyScheme');
+    if(btn){
+      btn.addEventListener('click', async ()=>{
+        try{ await navigator.clipboard.writeText('scaniverse://scan'); btn.textContent='Copiado ✔'; setTimeout(()=>btn.textContent='Copiar scaniverse://scan',1500);}catch(e){}
+      });
+    }
+  }catch(e){}
+})();
+
 </script>
 </body>
 </html>
