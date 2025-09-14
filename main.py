@@ -23,7 +23,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def root():
-    return FileResponse("static/index.html")
+    resp = FileResponse("static/index.html")
+    try:
+        resp.headers['Cache-Control'] = 'no-store'
+    except Exception:
+        pass
+    return resp
 
 @app.get("/healthz")
 async def healthz():

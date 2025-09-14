@@ -31,11 +31,15 @@
     /* modal */
     #scanModal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:60}
     #scanModal.show{display:flex} #scanSheet{background:#fff;border-radius:16px;max-width:520px;width:92vw;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)} .scanRow{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px} .scanBtn{flex:1 1 160px;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#f8fafc;font-weight:800;cursor:pointer} .scanLink{display:inline-block;margin-top:10px;font-weight:700}
-  </style>
+  
+  /* Mostrar panel Pro cuando el checkbox está marcado (sin JS) */
+  #proPanel{display:none}
+  #pro:checked ~ #proPanel{display:block}
+</style>
 </head>
 <body>
   <div class="container">
-    <h1>🐂 GanadoBravo — Evaluación IA</h1>
+    <h1>🐂 GanadoBravo — Evaluación IA <span class="tag" style="margin-left:8px">v4.3.11</span></h1>
 
     <div class="card">
       <form id="uploadForm" method="post" action="/api/evaluate" enctype="multipart/form-data">
@@ -57,9 +61,9 @@
         <div class="mt">
           <label><input type="checkbox" id="pro" /> Pro mode (LiDAR/Depth)</label>
         </div>
-        <div id="proPanel" class="hidden mt">
+        <div id="proPanel" class="mt">
           <div id="proUnsupported" class="muted hidden">Tu teléfono no soporta escáner 3D desde el navegador. Puedes usar cámara 2D.</div>
-          <div id="proControls" class="hidden">
+          <div id="proControls">
             <div class="scanRow">
               <button type="button" id="cam2dBtn" class="scanBtn">Usar cámara 2D ahora</button>
               <button type="button" id="scanBtn" class="scanBtn">Escáner 3D (abrir Scaniverse/Polycam)</button>
